@@ -3,160 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DogeGalaxy — Зажги свою звезду</title>
-    <!-- Библиотека Supabase v2 -->
+    <title>DogeGalaxy — Купи свое цифровое бессмертие</title>
+    <!-- Подключаем библиотеку Supabase v2 -->
     <script src="https://jsdelivr.net"></script>
+    <!-- Подключаем 3D движок Three.js -->
+    <script src="https://cloudflare.com"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #020205; font-family: "Segoe UI", Roboto, sans-serif; }
+        #canvas3d { width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* Фон глубокого космоса */
-        .space-bg {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1; background: radial-gradient(circle at center, #0a0a20 0%, #020205 100%);
+        /* Коммерческая шапка с триггерами FOMO и Эго */
+        .marketing-header {
+            position: absolute; top: 25px; left: 50%; transform: translateX(-50%);
+            z-index: 10; color: #fff; text-align: center; pointer-events: none; width: 90%; max-width: 600px;
         }
+        .marketing-header h1 { font-size: 24px; color: #ffb11a; text-transform: uppercase; letter-spacing: 3px; font-weight: 900; text-shadow: 0 0 20px rgba(255, 177, 26, 0.6); }
+        .marketing-header p { font-size: 14px; color: #e0e0e0; margin-top: 6px; font-style: italic; font-weight: 300; }
+        .fomo-counter { color: #ff4a4a; font-weight: bold; text-shadow: 0 0 10px rgba(255,74,74,0.5); }
 
-        /* Настоящие, прописанные в CSS мерцающие звезды вокруг */
-        .star { position: absolute; background-color: #fff; border-radius: 50%; animation: blink 3s infinite ease-in-out; }
-        .s1 { top: 15%; left: 20%; width: 2px; height: 2px; animation-delay: 0.5s; }
-        .s2 { top: 35%; left: 10%; width: 3px; height: 3px; animation-delay: 1.2s; }
-        .s3 { top: 75%; left: 15%; width: 1px; height: 1px; animation-delay: 0.2s; }
-        .s4 { top: 20%; left: 80%; width: 3px; height: 3px; animation-delay: 2s; }
-        .s5 { top: 60%; left: 85%; width: 2px; height: 2px; animation-delay: 0.8s; }
-        .s6 { top: 85%; left: 70%; width: 3px; height: 3px; animation-delay: 1.5s; }
-        .s7 { top: 10%; left: 50%; width: 2px; height: 2px; animation-delay: 2.3s; }
-        .s8 { top: 90%; left: 40%; width: 1px; height: 1px; animation-delay: 0.1s; }
-        .s9 { top: 45%; left: 75%; width: 2px; height: 2px; animation-delay: 1.7s; }
-        .s10 { top: 70%; left: 30%; width: 3px; height: 3px; animation-delay: 0.9s; }
-
-        @keyframes blink { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-
-        /* Контейнер Главной Звезды Dogecoin по центру */
-        .main-star-container {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); z-index: 5; cursor: pointer;
-        }
-        .main-star {
-            width: 50px; height: 50px; background-color: #ffb11a; border-radius: 50%;
-            box-shadow: 0 0 35px #ffb11a, 0 0 70px rgba(255, 177, 26, 0.6);
-            animation: pulse 2s infinite ease-in-out; transition: all 0.2s;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 35px #ffb11a; }
-            50% { transform: scale(1.15); box-shadow: 0 0 60px #ffb11a, 0 0 95px rgba(255, 177, 26, 0.8); }
-        }
-
-        /* Окно оплаты (Вынос на самый верхний уровень доверия браузера) */
+        /* Всплывающее неоновое окно покупки с апгрейдами */
         .modal {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #0b0b12; border: 2px solid #ffb11a; border-radius: 16px; padding: 30px;
-            z-index: 999999; width: 90%; max-width: 400px; color: #fff;
+            background: rgba(10, 10, 15, 0.97); backdrop-filter: blur(20px);
+            border: 2px solid #ffb11a; border-radius: 20px; padding: 35px;
+            z-index: 9999; width: 92%; max-width: 430px; color: #fff;
             box-shadow: 0 0 50px rgba(255, 177, 26, 0.6);
             display: none; flex-direction: column; gap: 15px;
         }
-        .modal h2 { color: #ffb11a; text-align: center; font-size: 22px; }
+        .modal h2 { color: #ffb11a; text-align: center; font-size: 24px; font-weight: 800; letter-spacing: 1px; }
+        .constellation-tag { text-align: center; font-size: 13px; color: #00f0ff; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: -10px; }
+        
         .modal input {
-            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px; padding: 12px; color: #fff; font-size: 16px; width: 100%; outline: none;
+            background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px; padding: 14px; color: #fff; font-size: 16px; width: 100%; outline: none; transition: 0.2s;
         }
-        .modal input:focus { border-color: #ffb11a; }
+        .modal input:focus { border-color: #ffb11a; background: rgba(255, 255, 255, 0.08); }
+        
+        /* Блок выбора тарифа (Геймификация заработка) */
+        .tier-selection { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+        .tier-option {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 15px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; cursor: pointer; transition: 0.2s;
+        }
+        .tier-option:hover { background: rgba(255, 177, 26, 0.08); border-color: rgba(255, 177, 26, 0.4); }
+        .tier-option.active { background: rgba(255, 177, 26, 0.15); border-color: #ffb11a; box-shadow: 0 0 15px rgba(255,177,26,0.2); }
+        .tier-name { font-weight: bold; font-size: 14px; }
+        .tier-desc { font-size: 11px; color: #aaa; margin-top: 2px; }
+        .tier-price { font-weight: 800; color: #ffb11a; font-size: 14px; text-align: right; }
+
         .wallet-box {
-            background: rgba(255, 177, 26, 0.1); border: 1px dashed #ffb11a;
-            padding: 12px; border-radius: 8px; font-family: monospace;
-            font-size: 13px; word-break: break-all; text-align: center; margin: 5px 0;
+            background: rgba(255, 177, 26, 0.07); border: 1px dashed rgba(255, 177, 26, 0.5);
+            padding: 12px; border-radius: 10px; font-family: monospace;
+            font-size: 13px; word-break: break-all; text-align: center; margin-top: 5px;
         }
         .btn {
-            background: #ffb11a; color: #000; border: none; padding: 12px;
-            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
+            background: #ffb11a; color: #000; border: none; padding: 14px;
+            border-radius: 10px; font-weight: 900; font-size: 16px; cursor: pointer; text-align: center; transition: all 0.2s;
         }
+        .btn:hover { background: #ffe066; transform: scale(1.02); box-shadow: 0 0 20px rgba(255,177,26,0.4); }
         .btn-close { background: transparent; color: #aaa; font-size: 14px; cursor: pointer; border: none; text-decoration: underline; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <!-- Наш глубокий космос -->
-    <div class="space-bg">
-        <!-- Железобетонные звезды вокруг, прописанные прямо в HTML -->
-        <div class="star s1"></div><div class="star s2"></div><div class="star s3"></div>
-        <div class="star s4"></div><div class="star s5"></div><div class="star s6"></div>
-        <div class="star s7"></div><div class="star s8"></div><div class="star s9"></div>
-        <div class="star s10"></div>
+    <!-- Шапка с посылом цифрового бессмертия -->
+    <div class="marketing-header">
+        <h1>Dogecoin Constellations</h1>
+        <p>Кофе исчезнет через 10 минут. Твоя звезда в Глобальной Карте будет гореть <span class="fomo-counter">ВСЕГДА</span>.</p>
     </div>
 
-    <!-- Главная Doge Звезда (Клик на неё гарантированно вызовет функцию) -->
-    <div class="main-star-container" id="star-trigger">
-        <div class="main-star"></div>
-    </div>
+    <!-- Высокоэстетичный 3D холст -->
+    <canvas id="canvas3d"></canvas>
 
-    <!-- Всплывающее окно оплаты -->
+    <!-- Всплывающее неоновое окно покупки с апгрейдами -->
     <div id="payment-modal" class="modal">
-      <h2>Зажечь Звезду #1</h2>
-      <p style="font-size: 14px; text-align: center; color: #ccc">Оставьте свое имя в цифровой галактике</p>
-      <input type="text" id="username-input" placeholder="Ваше Имя или Ник в X" maxlength="20" />
-      <p style="font-size: 14px; margin-top: 5px">Переведите <b>5 DOGE (~$1)</b> на кошелек:</p>
+      <h2 id="modal-title">Зажечь Звезду #2481</h2>
+      <div class="constellation-tag" id="constellation-name">Созвездие Крипто-Энтузиастов</div>
+      
+      <input type="text" id="username-input" placeholder="Ваше Имя / Ник в X или Instagram" maxlength="25" />
+      
+      <!-- Микро-апгрейды (Коммерческая фишка) -->
+      <div class="tier-selection">
+          <div class="tier-option active" id="tier-base" onclick="selectTier(5, 'Базовая точка')">
+              <div>
+                  <div class="tier-name">Базовая звезда</div>
+                  <div class="tier-desc">Обычная точка + ваше имя на карте всегда</div>
+              </div>
+              <div class="tier-price">5 DOGE<br><span style="font-size:10px;color:#aaa;">~$1</span></div>
+          </div>
+          <div class="tier-option" id="tier-premium" onclick="selectTier(25, 'Сверхновая звезда')">
+              <div>
+                  <div class="tier-name">Яркая Сверхновая ✨</div>
+                  <div class="tier-desc">Увеличенный размер, яркий цвет, жирный текст</div>
+              </div>
+              <div class="tier-price">25 DOGE<br><span style="font-size:10px;color:#aaa;">~$5</span></div>
+          </div>
+          <div class="tier-option" id="tier-b2b" onclick="selectTier(250, 'Своё созвездие')">
+              <div>
+                  <div class="tier-name">Своё созвездие (B2B) 🌌</div>
+                  <div class="tier-desc">Группа звезд под ваш бренд или логотип</div>
+              </div>
+              <div class="tier-price">250 DOGE<br><span style="font-size:10px;color:#aaa;">~$50</span></div>
+          </div>
+      </div>
+      
+      <p style="font-size: 13px; text-align: center;">Переведите точную сумму на кошелек Dogecoin:</p>
       <div class="wallet-box">DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e</div>
-      <button class="btn" id="submit-btn">Я оплатил(а)</button>
-      <button class="btn-close" id="close-btn">Отмена</button>
+      
+      <button class="btn" id="submit-btn">Зафиксировать в вечности</button>
+      <button class="btn-close" id="close-btn">Вернуться в космос</button>
     </div>
 
     <script>
-      // ИНИЦИАЛИЗАЦИЯ БЕЗОПАСНОГО КЛИЕНТА SUPABASE
+      // ИНИЦИАЛИЗАЦИЯ SUPABASE
       const SUPABASE_URL = "https://supabase.co";
       const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
-      
       const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      const starTrigger = document.getElementById("star-trigger");
       const modal = document.getElementById("payment-modal");
+      const modalTitle = document.getElementById("modal-title");
+      const constellationNameText = document.getElementById("constellation-name");
       const closeBtn = document.getElementById("close-btn");
       const submitBtn = document.getElementById("submit-btn");
       const usernameInput = document.getElementById("username-input");
 
-      // НАПРАВЛЯЕМ КЛИК НАПРЯМУЮ ЧЕРЕЗ БРАУЗЕРНЫЙ ТРИГГЕР
-      starTrigger.addEventListener("click", (e) => {
-          modal.style.display = "flex";
+      let selectedStarId = null;
+      let selectedPriceDoge = 5;
+      let selectedTierName = 'Базовая точка';
+
+      // ФУНКЦИЯ ВЫБОРА ТАРИФА (ГЕЙМИФИКАЦИЯ)
+      window.selectTier = function(price, name) {
+          selectedPriceDoge = price;
+          selectedTierName = name;
+          document.querySelectorAll('.tier-option').forEach(opt => opt.classList.remove('active'));
+          if(price === 5) document.getElementById('tier-base').classList.add('active');
+          if(price === 25) document.getElementById('tier-premium').classList.add('active');
+          if(price === 250) document.getElementById('tier-b2b').classList.add('active');
+      }
+
+      // 3D ВСЕЛЕННАЯ THREE.JS
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x020205, 0.0018);
+
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 3000);
+      camera.position.z = 1800; // Стартовый глубокий откат для влёта
+
+      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("canvas3d"), antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      // Генерация 5000 коммерческих точек
+      const totalStarsCount = 5000;
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(totalStarsCount * 3);
+      const colors = new Float32Array(totalStarsCount * 3);
+      const starObjects = [];
+
+      for(let i=0; i<totalStarsCount; i++) {
+          // Математическая структура спиральных рукавов (дорогой визуал)
+          const r = Math.random() * 700;
+          const theta = Math.random() * Math.PI * 2 * r * 0.015;
+          const x = Math.cos(theta) * r + (Math.random() - 0.5) * 35;
+          const y = (Math.random() - 0.5) * 50;
+          const z = Math.sin(theta) * r + (Math.random() - 0.5) * 35;
+
+          positions[i*3] = x;
+          positions[i*3+1] = y;
+          positions[i*3+2] = z;
+
+          // Распределяем звезды по созвездиям на основе их удаленности от центра ядра
+          let constellationType = "Созвездие Крипто-Энтузиастов";
+          if (r > 200 && r <= 450) constellationType = "Созвездие Геймеров";
+          if (r > 450) constellationType = "Созвездие Влюбленных";
+
+          starObjects.push({ id: i + 1, x: x, y: y, z: z, r: r, constellation: constellationType });
+
+          // Цветовая палитра: Золотое ядро Doge, неоновые рукава геймеров, пурпурные края влюбленных
+          if (r <= 200) {
+              colors[i*3] = 1.0; colors[i*3+1] = 0.73; colors[i*3+2] = 0.1; // Золото
+          } else if (r > 200 && r <= 450) {
+              colors[i*3] = 0.0; colors[i*3+1] = 0.94; colors[i*3+2] = 1.0; // Неоновый циан
+          } else {
+              colors[i*3] = 0.85; colors[i*3+1] = 0.2; colors[i*3+2] = 1.0; // Пурпур
+          }
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const material = new THREE.PointsMaterial({
+          size: 3.8,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.85,
+          blending: THREE.AdditiveBlending
       });
 
-      // Кнопка отмены
+      const starField = new THREE.Points(geometry, material);
+      scene.add(starField);
+
+      // СЕТКА СОЗВЕЗДИЙ (Соединительные геометрические линии)
+      const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffb11a, transparent: true, opacity: 0.12 });
+      const lineGeometry = new THREE.BufferGeometry();
+      const linePositions = [];
+
+      for(let i=0; i<80; i++) {
+          const starA = starObjects[Math.floor(Math.random() * 400)];
+          const starB = starObjects[Math.floor(Math.random() * 400)];
+          linePositions.push(starA.x, starA.y, starA.z);
+          linePositions.push(starB.x, starB.y, starB.z);
+      }
+      lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+      const constellations = new THREE.LineSegments(lineGeometry, lineMaterial);
+      scene.add(constellations);
+
+      // ТОЧНЫЙ КЛИК (Raycasting)
+      const raycaster = new THREE.Raycaster();
+      raycaster.params.Points.threshold = 4.5;
+      const mouse = new THREE.Vector2();
+
+      window.addEventListener('click', (event) => {
+          if (modal.style.display === "flex") return;
+
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+          raycaster.setFromCamera(mouse, camera);
+          const intersects = raycaster.intersectObject(starField);
+
+          if (intersects.length > 0) {
+              const starIndex = intersects.index;
+              const starData = starObjects[starIndex];
+              selectedStarId = starData.id;
+
+              // Заполняем форму данными выбранной звезды
+              modalTitle.innerText = `Зажечь Звезду #${selectedStarId}`;
+              constellationNameText.innerText = starData.constellation;
+              
+              // По умолчанию выставляем базовый тариф при каждом новом открытии
+              selectTier(5, 'Базовая точка');
+              
+              modal.style.display = "flex";
+          }
+      });
+
+      // АНИМАЦИОННЫЙ ЦИКЛ (Влёт, вращение, мерцание)
+      let time = 0;
+      function animate() {
+          requestAnimationFrame(animate);
+          time += 0.01;
+
+          // ЭФФЕКТ ВЛЁТА КАМЕРЫ (Плавный наплыв при входе на сайт)
+          if (camera.position.z > 500) {
+              camera.position.z -= (camera.position.z - 500) * 0.025;
+          }
+
+          // Залипательное вращение галактики
+          starField.rotation.y += 0.0005;
+          constellations.rotation.y += 0.0005;
+
+          // Геймификация визуала: легкое покачивание камеры (эффект живого дыхания космоса)
+          camera.position.x = Math.sin(time * 0.5) * 25;
+          camera.position.y = Math.cos(time * 0.5) * 15;
+          camera.lookAt(scene.position);
+
+          renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // ИНТЕРФЕЙС И ОТПРАВКА ДАННЫХ В SUPABASE
       closeBtn.addEventListener("click", () => {
-        modal.style.display = "none";
-        usernameInput.value = "";
-      });
-
-      // Логика кнопки "Я оплатил"
-      submitBtn.addEventListener("click", async () => {
-        const name = usernameInput.value.trim();
-        if (!name) {
-          alert("Пожалуйста, введите ваше имя!");
-          return;
-        }
-
-        submitBtn.innerText = "Запись в реестр...";
-        submitBtn.disabled = true;
-
-        try {
-          const { data, error } = await supabaseClient
-            .from("purchased_stars")
-            .insert([{ star_number: 1, user_name: name, wallet_address: "DOGE-Transaction-Pending" }]);
-
-          if (error) throw error;
-
-          alert(`Спасибо, ${name}! Ваша звезда успешно внесена в реестр.`);
           modal.style.display = "none";
           usernameInput.value = "";
-          
-          // Эффект триумфа: звезда меняет цвет на неоново-синий
-          document.querySelector(".main-star").style.backgroundColor = "#00f0ff";
-          document.querySelector(".main-star").style.boxShadow = "0 0 35px #00f0ff, 0 0 70px rgba(0, 240, 255, 0.6)";
-          
-        } catch (err) {
-          console.error("Ошибка Supabase:", err);
-          alert(`Ошибка базы данных: ${err.message}. Включите доступ (Disable RLS) в панели Supabase!`);
-        } finally {
-          submitBtn.innerText = "Я оплатил(а)";
-          submitBtn.disabled = false;
-        }
+      });
+
+      submitBtn.addEventListener("click", async () => {
+          const name = usernameInput.value.trim();
+          if (!name) {
+              alert("Пожалуйста, введите ваше имя для фиксации в вечности!");
+              return;
+          }
+
+          submitBtn.innerText = "Связь со спутником...";
+          submitBtn.disabled = true;
+
+          try {
+              // Сохраняем имя, ID звезды, сумму перевода и выбранный микро-апгрейд!
+              const { data, error } = await supabaseClient
+                  .from("purchased_stars")
+                  .insert([{ 
+                      star_number: selectedStarId, 
+                      user_name: `${name} (${selectedTierName})`, 
+                      wallet_address: `Pending: ${selectedPriceDoge} DOGE` 
+                  }]);
+
+              if (error) throw error;
+
+              alert(`Успешно! Звезда #${selectedStarId} забронирована за кошельком ${name}. Она будет гореть всегда.`);
+              modal.style.display = "none";
+              usernameInput.value = "";
+
+          } catch (err) {
+              console.error("Ошибка сохранения:", err);
+              alert(`Запись прервана: ${err.message}. Убедитесь, что кнопка RLS отключена (Disable RLS) в кабинете Supabase!`);
+          } finally {
+              submitBtn.innerText = "Зафиксировать в вечности";
+              submitBtn.disabled = false;
+          }
       });
     </script>
 </body>
