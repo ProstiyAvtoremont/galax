@@ -123,7 +123,6 @@
 
       const modal = document.getElementById("payment-modal");
       const modalTitle = document.getElementById("modal-title");
-      const constellationNameText = document.getElementById("constellation-name");
       const closeBtn = document.getElementById("close-btn");
       const submitBtn = document.getElementById("submit-btn");
       const usernameInput = document.getElementById("username-input");
@@ -132,10 +131,12 @@
       let selectedPriceDoge = 5;
       let selectedTierName = 'Базовая точка';
 
-      // Логика выбора тарифа
-      document.getElementById('tier-base').addEventListener('click', () => selectTier(5, 'Базовая точка'));
-      document.getElementById('tier-premium').addEventListener('click', () => selectTier(25, 'Сверхновая звезда'));
-      document.getElementById('tier-b2b').addEventListener('click', () => selectTier(250, 'Своё созвездие'));
+      // ИСПРАВЛЕНО: Безопасное назначение кликов только после полной загрузки HTML дерева
+      window.onload = function() {
+          document.getElementById('tier-base').addEventListener('click', () => selectTier(5, 'Базовая точка'));
+          document.getElementById('tier-premium').addEventListener('click', () => selectTier(25, 'Сверхновая звезда'));
+          document.getElementById('tier-b2b').addEventListener('click', () => selectTier(250, 'Своё созвездие'));
+      };
 
       function selectTier(price, name) {
           selectedPriceDoge = price;
@@ -204,7 +205,7 @@
       const starField = new THREE.Points(geometry, material);
       scene.add(starField);
 
-      // Геометрические линии созвездий
+      // Линии созвездий
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffb11a, transparent: true, opacity: 0.12 });
       const lineGeometry = new THREE.BufferGeometry();
       const linePositions = [];
@@ -219,7 +220,7 @@
       const constellations = new THREE.LineSegments(lineGeometry, lineMaterial);
       scene.add(constellations);
 
-      // МАТЕМАТИКА КЛИКА (Raycasting)
+      // КЛИК (Raycasting)
       const raycaster = new THREE.Raycaster();
       raycaster.params.Points.threshold = 4.5;
       const mouse = new THREE.Vector2();
