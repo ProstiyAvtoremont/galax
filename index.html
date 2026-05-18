@@ -40,7 +40,7 @@
         }
         .modal input:focus { border-color: #ffb11a; background: rgba(255, 255, 255, 0.08); }
         
-        /* Блок выбора тарифа (Геймификация заработка) */
+        /* Блок выбора тарифа */
         .tier-selection { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
         .tier-option {
             display: flex; justify-content: space-between; align-items: center;
@@ -68,41 +68,40 @@
 </head>
 <body>
 
-    <!-- Шапка с посылом цифрового бессмертия -->
+    <!-- Шапка проекта -->
     <div class="marketing-header">
         <h1>Dogecoin Constellations</h1>
         <p>Кофе исчезнет через 10 минут. Твоя звезда в Глобальной Карте будет гореть <span class="fomo-counter">ВСЕГДА</span>.</p>
     </div>
 
-    <!-- Высокоэстетичный 3D холст -->
+    <!-- 3D холст -->
     <canvas id="canvas3d"></canvas>
 
-    <!-- Всплывающее неоновое окно покупки с апгрейдами -->
+    <!-- Всплывающее неоновое окно покупки -->
     <div id="payment-modal" class="modal">
       <h2 id="modal-title">Зажечь Звезду #2481</h2>
       <div class="constellation-tag" id="constellation-name">Созвездие Крипто-Энтузиастов</div>
       
       <input type="text" id="username-input" placeholder="Ваше Имя / Ник в X или Instagram" maxlength="25" />
       
-      <!-- Микро-апгрейды (Коммерческая фишка) -->
       <div class="tier-selection">
-          <div class="tier-option active" id="tier-base" onclick="selectTier(5, 'Базовая точка')">
+          <div class="tier-option active" id="tier-base">
               <div>
-                  <div class="tier-name">Базовая звезда</div>
+                  <div class="tier-name">Base Star</div>
                   <div class="tier-desc">Обычная точка + ваше имя на карте всегда</div>
               </div>
               <div class="tier-price">5 DOGE<br><span style="font-size:10px;color:#aaa;">~$1</span></div>
           </div>
-          <div class="tier-option" id="tier-premium" onclick="selectTier(25, 'Сверхновая звезда')">
+          <div class="tier-option" id="tier-premium">
               <div>
-                  <div class="tier-name">Яркая Сверхновая ✨</div>
+                  <div class="tier-name">Supernova ✨</div>
                   <div class="tier-desc">Увеличенный размер, яркий цвет, жирный текст</div>
               </div>
               <div class="tier-price">25 DOGE<br><span style="font-size:10px;color:#aaa;">~$5</span></div>
           </div>
-          <div class="tier-option" id="tier-b2b" onclick="selectTier(250, 'Своё созвездие')">
+          <div class="tier-option" id="tier-b2b">
               <div>
-                  <div class="tier-name">Своё созвездие (B2B) 🌌</div>
+                  <div class="tier-name">Constellation (B2B) 🌌</div>
                   <div class="tier-desc">Группа звезд под ваш бренд или логотип</div>
               </div>
               <div class="tier-price">250 DOGE<br><span style="font-size:10px;color:#aaa;">~$50</span></div>
@@ -133,8 +132,12 @@
       let selectedPriceDoge = 5;
       let selectedTierName = 'Базовая точка';
 
-      // ФУНКЦИЯ ВЫБОРА ТАРИФА (ГЕЙМИФИКАЦИЯ)
-      window.selectTier = function(price, name) {
+      // Логика выбора тарифа
+      document.getElementById('tier-base').addEventListener('click', () => selectTier(5, 'Базовая точка'));
+      document.getElementById('tier-premium').addEventListener('click', () => selectTier(25, 'Сверхновая звезда'));
+      document.getElementById('tier-b2b').addEventListener('click', () => selectTier(250, 'Своё созвездие'));
+
+      function selectTier(price, name) {
           selectedPriceDoge = price;
           selectedTierName = name;
           document.querySelectorAll('.tier-option').forEach(opt => opt.classList.remove('active'));
@@ -148,13 +151,13 @@
       scene.fog = new THREE.FogExp2(0x020205, 0.0018);
 
       const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 3000);
-      camera.position.z = 1800; // Стартовый глубокий откат для влёта
+      camera.position.z = 1800;
 
       const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("canvas3d"), antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-      // Генерация 5000 коммерческих точек
+      // Генерация 5000 точек
       const totalStarsCount = 5000;
       const geometry = new THREE.BufferGeometry();
       const positions = new Float32Array(totalStarsCount * 3);
@@ -162,7 +165,6 @@
       const starObjects = [];
 
       for(let i=0; i<totalStarsCount; i++) {
-          // Математическая структура спиральных рукавов (дорогой визуал)
           const r = Math.random() * 700;
           const theta = Math.random() * Math.PI * 2 * r * 0.015;
           const x = Math.cos(theta) * r + (Math.random() - 0.5) * 35;
@@ -173,20 +175,18 @@
           positions[i*3+1] = y;
           positions[i*3+2] = z;
 
-          // Распределяем звезды по созвездиям на основе их удаленности от центра ядра
           let constellationType = "Созвездие Крипто-Энтузиастов";
           if (r > 200 && r <= 450) constellationType = "Созвездие Геймеров";
           if (r > 450) constellationType = "Созвездие Влюбленных";
 
           starObjects.push({ id: i + 1, x: x, y: y, z: z, r: r, constellation: constellationType });
 
-          // Цветовая палитра: Золотое ядро Doge, неоновые рукава геймеров, пурпурные края влюбленных
           if (r <= 200) {
-              colors[i*3] = 1.0; colors[i*3+1] = 0.73; colors[i*3+2] = 0.1; // Золото
+              colors[i*3] = 1.0; colors[i*3+1] = 0.73; colors[i*3+2] = 0.1;
           } else if (r > 200 && r <= 450) {
-              colors[i*3] = 0.0; colors[i*3+1] = 0.94; colors[i*3+2] = 1.0; // Неоновый циан
+              colors[i*3] = 0.0; colors[i*3+1] = 0.94; colors[i*3+2] = 1.0;
           } else {
-              colors[i*3] = 0.85; colors[i*3+1] = 0.2; colors[i*3+2] = 1.0; // Пурпур
+              colors[i*3] = 0.85; colors[i*3+1] = 0.2; colors[i*3+2] = 1.0;
           }
       }
 
@@ -204,7 +204,7 @@
       const starField = new THREE.Points(geometry, material);
       scene.add(starField);
 
-      // СЕТКА СОЗВЕЗДИЙ (Соединительные геометрические линии)
+      // Геометрические линии созвездий
       const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffb11a, transparent: true, opacity: 0.12 });
       const lineGeometry = new THREE.BufferGeometry();
       const linePositions = [];
@@ -219,7 +219,7 @@
       const constellations = new THREE.LineSegments(lineGeometry, lineMaterial);
       scene.add(constellations);
 
-      // ТОЧНЫЙ КЛИК (Raycasting)
+      // МАТЕМАТИКА КЛИКА (Raycasting)
       const raycaster = new THREE.Raycaster();
       raycaster.params.Points.threshold = 4.5;
       const mouse = new THREE.Vector2();
@@ -238,33 +238,28 @@
               const starData = starObjects[starIndex];
               selectedStarId = starData.id;
 
-              // Заполняем форму данными выбранной звезды
               modalTitle.innerText = `Зажечь Звезду #${selectedStarId}`;
+              const constellationNameText = document.getElementById("constellation-name");
               constellationNameText.innerText = starData.constellation;
               
-              // По умолчанию выставляем базовый тариф при каждом новом открытии
               selectTier(5, 'Базовая точка');
-              
               modal.style.display = "flex";
           }
       });
 
-      // АНИМАЦИОННЫЙ ЦИКЛ (Влёт, вращение, мерцание)
+      // АНИМАЦИОННЫЙ ЦИКЛ
       let time = 0;
       function animate() {
           requestAnimationFrame(animate);
           time += 0.01;
 
-          // ЭФФЕКТ ВЛЁТА КАМЕРЫ (Плавный наплыв при входе на сайт)
           if (camera.position.z > 500) {
               camera.position.z -= (camera.position.z - 500) * 0.025;
           }
 
-          // Залипательное вращение галактики
           starField.rotation.y += 0.0005;
           constellations.rotation.y += 0.0005;
 
-          // Геймификация визуала: легкое покачивание камеры (эффект живого дыхания космоса)
           camera.position.x = Math.sin(time * 0.5) * 25;
           camera.position.y = Math.cos(time * 0.5) * 15;
           camera.lookAt(scene.position);
@@ -279,7 +274,7 @@
           renderer.setSize(window.innerWidth, window.innerHeight);
       });
 
-      // ИНТЕРФЕЙС И ОТПРАВКА ДАННЫХ В SUPABASE
+      // ЛОГИКА ФОРМЫ
       closeBtn.addEventListener("click", () => {
           modal.style.display = "none";
           usernameInput.value = "";
@@ -288,7 +283,7 @@
       submitBtn.addEventListener("click", async () => {
           const name = usernameInput.value.trim();
           if (!name) {
-              alert("Пожалуйста, введите ваше имя для фиксации в вечности!");
+              alert("Пожалуйста, введите ваше имя!");
               return;
           }
 
@@ -296,7 +291,6 @@
           submitBtn.disabled = true;
 
           try {
-              // Сохраняем имя, ID звезды, сумму перевода и выбранный микро-апгрейд!
               const { data, error } = await supabaseClient
                   .from("purchased_stars")
                   .insert([{ 
@@ -307,7 +301,7 @@
 
               if (error) throw error;
 
-              alert(`Успешно! Звезда #${selectedStarId} забронирована за кошельком ${name}. Она будет гореть всегда.`);
+              alert(`Успешно! Звезда #${selectedStarId} забронирована за кошельком ${name}.`);
               modal.style.display = "none";
               usernameInput.value = "";
 
