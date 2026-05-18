@@ -8,15 +8,43 @@
     <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #05050a; font-family: "Segoe UI", Roboto, sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #020205; font-family: "Segoe UI", Roboto, sans-serif; }
         
-        /* Наш 3D холст */
-        #space-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; cursor: pointer; display: block; }
+        /* Интерактивный глубокий космос */
+        .space-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; cursor: pointer;
+            background: radial-gradient(circle at center, #0a0a1a 0%, #020205 100%);
+        }
 
-        /* Всплывающее неоновое окно оплаты */
+        /* Статичные мерцающие фоновые звезды (CSS магия) */
+        .star {
+            position: absolute; background-color: #fff; border-radius: 50%;
+            animation: blink 3s infinite ease-in-out; opacity: 0.3;
+        }
+        @keyframes blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+
+        /* Наша Главная Dogecoin Звезда строго по центру экрана */
+        .main-star-container {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); z-index: 5; cursor: pointer;
+        }
+        .main-star {
+            width: 40px; height: 40px; background-color: #ffb11a; border-radius: 50%;
+            box-shadow: 0 0 35px #ffb11a, 0 0 70px rgba(255, 177, 26, 0.6);
+            animation: pulse 2.5s infinite ease-in-out; transition: all 0.3s;
+        }
+        .main-star:hover { transform: scale(1.15); box-shadow: 0 0 50px #ffb11a; }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 30px #ffb11a; }
+            50% { transform: scale(1.1); box-shadow: 0 0 55px #ffb11a, 0 0 90px rgba(255, 177, 26, 0.8); }
+        }
+
+        /* Красивое всплывающее неоновое окно */
         .modal {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(15px);
+            background: rgba(10, 10, 15, 0.96); backdrop-filter: blur(15px);
             border: 2px solid #ffb11a; border-radius: 16px; padding: 30px;
             z-index: 9999; width: 90%; max-width: 400px; color: #fff;
             box-shadow: 0 0 40px rgba(255, 177, 26, 0.5);
@@ -44,10 +72,15 @@
 </head>
 <body>
 
-    <!-- Наш собственный, независимый 3D холст -->
-    <canvas id="space-canvas"></canvas>
+    <!-- 1. Наш независимый космос -->
+    <div class="space-bg" id="space"></div>
 
-    <!-- Всплывающее окно оплаты -->
+    <!-- 2. Главная неоновая звезда Dogecoin -->
+    <div class="main-star-container" id="star-trigger">
+        <div class="main-star"></div>
+    </div>
+
+    <!-- 3. Всплывающее окно оплаты -->
     <div id="payment-modal" class="modal">
       <h2>Зажечь Звезду #1</h2>
       <p style="font-size: 14px; text-align: center; color: #ccc">Оставьте свое имя в цифровой галактике</p>
@@ -64,109 +97,30 @@
       const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
       const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      const canvas = document.getElementById("space-canvas");
-      const ctx = canvas.getContext("2d");
+      const space = document.getElementById("space");
+      const starTrigger = document.getElementById("star-trigger");
       const modal = document.getElementById("payment-modal");
       const closeBtn = document.getElementById("close-btn");
       const submitBtn = document.getElementById("submit-btn");
       const usernameInput = document.getElementById("username-input");
 
-      // ИСПРАВЛЕНО: Железобетонное принудительное получение размеров экрана браузера
-      let width = canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-      let height = canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-
-      const stars = [];
-      const numStars = 250; // Чуть добавили звезд для красоты
-      const focalLength = width;
-      let mouseX = 0, mouseY = 0;
-      let pulse = 0;
-
-      // Генерируем 3D координаты звезд
-      for (let i = 0; i < numStars; i++) {
-          stars.push({
-              x: Math.random() * width - width / 2,
-              y: Math.random() * height - height / 2,
-              z: Math.random() * width
-          });
+      // Автоматическая генерация 150 мерцающих звезд средствами HTML
+      for (let i = 0; i < 150; i++) {
+          const star = document.createElement("div");
+          star.className = "star";
+          star.style.left = Math.random() * 100 + "%";
+          star.style.top = Math.random() * 100 + "%";
+          const size = Math.random() * 3;
+          star.style.width = size + "px";
+          star.style.height = size + "px";
+          star.style.animationDelay = Math.random() * 3 + "s";
+          space.appendChild(star);
       }
 
-      // Главная Звезда #1
-      const mainStar = { x: 0, y: 0, z: 400, radius: 15 };
-
-      window.addEventListener("mousemove", (e) => {
-          mouseX = (e.clientX - width / 2) * 0.07;
-          mouseY = (e.clientY - height / 2) * 0.07;
-      });
-
-      // ИСПРАВЛЕНО: Функция автоматического перерасчета размеров холста при повороте экрана смартфона или ресайзе
-      function resizeCanvas() {
-          width = canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
-          height = canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
-      }
-      window.addEventListener("resize", resizeCanvas);
-
-      let mainStarScreenX = width / 2;
-      let mainStarScreenY = height / 2;
-      let mainStarScreenRadius = 30;
-
-      // Главный цикл отрисовки (60 кадров в секунду)
-      function draw() {
-          ctx.fillStyle = "#05050a";
-          ctx.fillRect(0, 0, width, height);
-          
-          pulse += 0.04;
-
-          // Отрисовка фонового неба
-          stars.forEach(star => {
-              star.z -= 0.6;
-              if (star.z <= 0) star.z = width;
-
-              let sx = (star.x - mouseX) * (focalLength / star.z) + width / 2;
-              let sy = (star.y - mouseY) * (focalLength / star.z) + height / 2;
-              let size = (focalLength / star.z) * 1.5;
-
-              if (sx >= 0 && sx <= width && sy >= 0 && sy <= height) {
-                  ctx.fillStyle = `rgba(255, 255, 255, ${1 - star.z / width})`;
-                  ctx.beginPath();
-                  ctx.arc(sx, sy, Math.max(0.6, size), 0, Math.PI * 2);
-                  ctx.fill();
-              }
-          });
-
-          // Рассчитываем положение Главной Звезды Dogecoin
-          let mx = (mainStar.x - mouseX) * (focalLength / mainStar.z) + width / 2;
-          let my = (mainStar.y - mouseY) * (focalLength / mainStar.z) + height / 2;
-          
-          let currentPulseRadius = mainStar.radius + Math.sin(pulse) * 4;
-          mainStarScreenRadius = (focalLength / mainStar.z) * currentPulseRadius;
-
-          mainStarScreenX = mx;
-          mainStarScreenY = my;
-
-          // Рисуем неоновое DOGE-свечение (Glow)
-          ctx.shadowBlur = 40;
-          ctx.shadowColor = "#ffb11a";
-          ctx.fillStyle = "#ffb11a";
-          
-          ctx.beginPath();
-          ctx.arc(mx, my, Math.max(5, mainStarScreenRadius), 0, Math.PI * 2);
-          ctx.fill();
-          
-          // Сбрасываем свечение для оптимизации скорости
-          ctx.shadowBlur = 0;
-
-          requestAnimationFrame(draw);
-      }
-
-      // Запускаем рендеринг нашего космоса
-      draw();
-
-      // КЛИК СТРОГО ПО ЦЕНТРАЛЬНОЙ ЗВЕЗДЕ
-      canvas.addEventListener("click", (e) => {
-          const distance = Math.sqrt((e.clientX - mainStarScreenX) ** 2 + (e.clientY - mainStarScreenY) ** 2);
-          if (distance <= mainStarScreenRadius + 15) {
-              modal.style.display = "flex";
-          }
+      // КЛИК СТРОГО ПО ЗВЕЗДЕ ОТКРЫВАЕТ ОКНО
+      starTrigger.addEventListener("click", (e) => {
+          e.stopPropagation();
+          modal.style.display = "flex";
       });
 
       // Кнопка отмены
@@ -176,7 +130,7 @@
         usernameInput.value = "";
       });
 
-      // Кнопка оплаты и отправка в Supabase
+      // Логика кнопки "Я оплатил" с отправкой в Supabase
       submitBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
 
@@ -199,11 +153,14 @@
           alert(`Спасибо, ${name}! Ваша звезда успешно внесена в реестр.`);
           modal.style.display = "none";
           usernameInput.value = "";
-          mainStar.radius = 22; // Звезда визуально вырастает в знак подтверждения!
+          
+          // Визуальный эффект: звезда после оплаты горит синим неоном в знак подтверждения!
+          document.querySelector(".main-star").style.backgroundColor = "#00f0ff";
+          document.querySelector(".main-star").style.boxShadow = "0 0 35px #00f0ff, 0 0 70px rgba(0, 240, 255, 0.6)";
           
         } catch (err) {
-          console.error("Ошибка базы данных Supabase:", err);
-          alert(`Ошибка базы данных: ${err.message}. Пожалуйста, убедитесь, что в панели Supabase отключен RLS для таблицы purchased_stars!`);
+          console.error("Ошибка Supabase:", err);
+          alert(`Ошибка: ${err.message}. Проверьте, отключен ли RLS в Supabase для таблицы purchased_stars!`);
         } finally {
           submitBtn.innerText = "Я оплатил(а)";
           submitBtn.disabled = false;
