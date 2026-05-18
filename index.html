@@ -1,133 +1,58 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DogeGalaxy — Зажги свою звезду</title>
     <!-- Подключаем библиотеку Supabase v2 -->
     <script src="https://jsdelivr.net"></script>
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      body,
-      html {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background-color: #05050a;
-        font-family: "Segoe UI", Roboto, sans-serif;
-      }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #05050a; font-family: "Segoe UI", Roboto, sans-serif; }
+        
+        /* Наш 3D холст */
+        #space-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; cursor: pointer; display: block; }
 
-      /* Холст для нашего собственного 3D космоса */
-      #space-canvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-        cursor: pointer;
-      }
-
-      /* Всплывающее неоновое окно оплаты */
-      .modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(10, 10, 15, 0.95);
-        backdrop-filter: blur(15px);
-        border: 2px solid #ffb11a;
-        border-radius: 16px;
-        padding: 30px;
-        z-index: 9999;
-        width: 90%;
-        max-width: 400px;
-        color: #fff;
-        box-shadow: 0 0 40px rgba(255, 177, 26, 0.5);
-        display: none;
-        flex-direction: column;
-        gap: 15px;
-      }
-      .modal h2 {
-        color: #ffb11a;
-        text-align: center;
-        font-size: 22px;
-        margin-bottom: 5px;
-      }
-      .modal input {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 8px;
-        padding: 12px;
-        color: #fff;
-        font-size: 16px;
-        width: 100%;
-        outline: none;
-      }
-      .modal input:focus {
-        border-color: #ffb11a;
-      }
-      .wallet-box {
-        background: rgba(255, 177, 26, 0.1);
-        border: 1px dashed #ffb11a;
-        padding: 10px;
-        border-radius: 8px;
-        font-family: monospace;
-        font-size: 13px;
-        word-break: break-all;
-        text-align: center;
-        margin: 10px 0;
-      }
-      .btn {
-        background: #ffb11a;
-        color: #000;
-        border: none;
-        padding: 12px;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 16px;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-align: center;
-      }
-      .btn:hover {
-        background: #ffe066;
-        transform: scale(1.02);
-      }
-      .btn-close {
-        background: transparent;
-        color: #aaa;
-        font-size: 14px;
-        cursor: pointer;
-        border: none;
-        text-decoration: underline;
-        margin-top: 5px;
-      }
+        /* Всплывающее неоновое окно оплаты */
+        .modal {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(15px);
+            border: 2px solid #ffb11a; border-radius: 16px; padding: 30px;
+            z-index: 9999; width: 90%; max-width: 400px; color: #fff;
+            box-shadow: 0 0 40px rgba(255, 177, 26, 0.5);
+            display: none; flex-direction: column; gap: 15px;
+        }
+        .modal h2 { color: #ffb11a; text-align: center; font-size: 22px; margin-bottom: 5px; }
+        .modal input {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px; padding: 12px; color: #fff; font-size: 16px; width: 100%; outline: none;
+        }
+        .modal input:focus { border-color: #ffb11a; }
+        .wallet-box {
+            background: rgba(255, 177, 26, 0.1); border: 1px dashed #ffb11a;
+            padding: 10px; border-radius: 8px; font-family: monospace;
+            font-size: 13px; word-break: break-all; text-align: center; margin: 10px 0;
+        }
+        .btn {
+            background: #ffb11a; color: #000; border: none; padding: 12px;
+            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
+            transition: all 0.2s; text-align: center;
+        }
+        .btn:hover { background: #ffe066; transform: scale(1.02); }
+        .btn-close { background: transparent; color: #aaa; font-size: 14px; cursor: pointer; border: none; text-decoration: underline; margin-top: 5px; }
     </style>
-  </head>
-  <body>
+</head>
+<body>
+
     <!-- Наш собственный, независимый 3D холст -->
     <canvas id="space-canvas"></canvas>
 
     <!-- Всплывающее окно оплаты -->
     <div id="payment-modal" class="modal">
       <h2>Зажечь Звезду #1</h2>
-      <p style="font-size: 14px; text-align: center; color: #ccc">
-        Оставьте свое имя в цифровой галактике
-      </p>
-      <input
-        type="text"
-        id="username-input"
-        placeholder="Ваше Имя или Ник в X"
-        maxlength="20"
-      />
-      <p style="font-size: 14px; margin-top: 5px">
-        Переведите <b>5 DOGE (~$1)</b> на кошелек:
-      </p>
+      <p style="font-size: 14px; text-align: center; color: #ccc">Оставьте свое имя в цифровой галактике</p>
+      <input type="text" id="username-input" placeholder="Ваше Имя или Ник в X" maxlength="20" />
+      <p style="font-size: 14px; margin-top: 5px">Переведите <b>5 DOGE (~$1)</b> на кошелек:</p>
       <div class="wallet-box">DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e</div>
       <button class="btn" id="submit-btn">Я оплатил(а)</button>
       <button class="btn-close" id="close-btn">Отмена</button>
@@ -136,12 +61,8 @@
     <script>
       // ИНИЦИАЛИЗАЦИЯ SUPABASE
       const SUPABASE_URL = "https://supabase.co";
-      const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
-      const supabaseClient = window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_ANON_KEY
-      );
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
+      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
       const canvas = document.getElementById("space-canvas");
       const ctx = canvas.getContext("2d");
@@ -150,112 +71,102 @@
       const submitBtn = document.getElementById("submit-btn");
       const usernameInput = document.getElementById("username-input");
 
-      let width = (canvas.width = window.innerWidth);
-      let height = (canvas.height = window.innerHeight);
+      // ИСПРАВЛЕНО: Железобетонное принудительное получение размеров экрана браузера
+      let width = canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+      let height = canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
 
-      // Настройки 3D математики звездного неба
       const stars = [];
-      const numStars = 200;
+      const numStars = 250; // Чуть добавили звезд для красоты
       const focalLength = width;
-      let mouseX = 0,
-        mouseY = 0;
+      let mouseX = 0, mouseY = 0;
       let pulse = 0;
 
-      // Генерируем случайные 3D координаты для 200 фоновых звезд
+      // Генерируем 3D координаты звезд
       for (let i = 0; i < numStars; i++) {
-        stars.push({
-          x: Math.random() * width - width / 2,
-          y: Math.random() * height - height / 2,
-          z: Math.random() * width,
-        });
+          stars.push({
+              x: Math.random() * width - width / 2,
+              y: Math.random() * height - height / 2,
+              z: Math.random() * width
+          });
       }
 
-      // Добавляем Главную Звезду #1 ровно по центру космоса
-      const mainStar = { x: 0, y: 0, z: 400, isMain: true, radius: 12 };
+      // Главная Звезда #1
+      const mainStar = { x: 0, y: 0, z: 400, radius: 15 };
 
-      // Отслеживаем движение мышки, чтобы космос плавно вращался
       window.addEventListener("mousemove", (e) => {
-        mouseX = (e.clientX - width / 2) * 0.05;
-        mouseY = (e.clientY - height / 2) * 0.05;
+          mouseX = (e.clientX - width / 2) * 0.07;
+          mouseY = (e.clientY - height / 2) * 0.07;
       });
 
-      window.addEventListener("resize", () => {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-      });
+      // ИСПРАВЛЕНО: Функция автоматического перерасчета размеров холста при повороте экрана смартфона или ресайзе
+      function resizeCanvas() {
+          width = canvas.width = window.innerWidth || document.documentElement.clientWidth || document.body.clientWidth;
+          height = canvas.height = window.innerHeight || document.documentElement.clientHeight || document.body.clientHeight;
+      }
+      window.addEventListener("resize", resizeCanvas);
 
-      // Храним экранные координаты Главной Звезды для точного клика
-      let mainStarScreenX = 0;
-      let mainStarScreenY = 0;
-      let mainStarScreenRadius = 0;
+      let mainStarScreenX = width / 2;
+      let mainStarScreenY = height / 2;
+      let mainStarScreenRadius = 30;
 
-      // Главный цикл отрисовки 3D (60 кадров в секунду)
+      // Главный цикл отрисовки (60 кадров в секунду)
       function draw() {
-        ctx.fillStyle = "#05050a";
-        ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = "#05050a";
+          ctx.fillRect(0, 0, width, height);
+          
+          pulse += 0.04;
 
-        pulse += 0.05; // Переменная для дыхания звезды (пинг-понг)
+          // Отрисовка фонового неба
+          stars.forEach(star => {
+              star.z -= 0.6;
+              if (star.z <= 0) star.z = width;
 
-        // Отрисовка фоновых звезд
-        stars.forEach((star) => {
-          star.z -= 0.5; // Звезды медленно летят на нас
-          if (star.z <= 0) star.z = width; // Перезапуск звезды в глубине
+              let sx = (star.x - mouseX) * (focalLength / star.z) + width / 2;
+              let sy = (star.y - mouseY) * (focalLength / star.z) + height / 2;
+              let size = (focalLength / star.z) * 1.5;
 
-          // 3D проекция на 2D экран
-          let sx = (star.x - mouseX) * (focalLength / star.z) + width / 2;
-          let sy = (star.y - mouseY) * (focalLength / star.z) + height / 2;
-          let size = (focalLength / star.z) * 1.5;
+              if (sx >= 0 && sx <= width && sy >= 0 && sy <= height) {
+                  ctx.fillStyle = `rgba(255, 255, 255, ${1 - star.z / width})`;
+                  ctx.beginPath();
+                  ctx.arc(sx, sy, Math.max(0.6, size), 0, Math.PI * 2);
+                  ctx.fill();
+              }
+          });
 
-          if (sx >= 0 && sx <= width && sy >= 0 && sy <= height) {
-            ctx.fillStyle = `rgba(255, 255, 255, ${1 - star.z / width})`;
-            ctx.beginPath();
-            ctx.arc(sx, sy, Math.max(0.5, size), 0, Math.PI * 2);
-            ctx.fill();
-          }
-        });
+          // Рассчитываем положение Главной Звезды Dogecoin
+          let mx = (mainStar.x - mouseX) * (focalLength / mainStar.z) + width / 2;
+          let my = (mainStar.y - mouseY) * (focalLength / mainStar.z) + height / 2;
+          
+          let currentPulseRadius = mainStar.radius + Math.sin(pulse) * 4;
+          mainStarScreenRadius = (focalLength / mainStar.z) * currentPulseRadius;
 
-        // Отрисовка нашей Главной Dogecoin Звезды
-        let mx = (mainStar.x - mouseX) * (focalLength / mainStar.z) + width / 2;
-        let my =
-          (mainStar.y - mouseY) * (focalLength / mainStar.z) + height / 2;
+          mainStarScreenX = mx;
+          mainStarScreenY = my;
 
-        // Реализация эффекта Пинг-понг ("дыхание") в размерах
-        let currentPulseRadius = mainStar.radius + Math.sin(pulse) * 3;
-        mainStarScreenRadius = (focalLength / mainStar.z) * currentPulseRadius;
+          // Рисуем неоновое DOGE-свечение (Glow)
+          ctx.shadowBlur = 40;
+          ctx.shadowColor = "#ffb11a";
+          ctx.fillStyle = "#ffb11a";
+          
+          ctx.beginPath();
+          ctx.arc(mx, my, Math.max(5, mainStarScreenRadius), 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Сбрасываем свечение для оптимизации скорости
+          ctx.shadowBlur = 0;
 
-        mainStarScreenX = mx;
-        mainStarScreenY = my;
-
-        // Рисуем неоновое свечение (Glow) вокруг Doge-звезды
-        ctx.shadowBlur = 30;
-        ctx.shadowColor = "#ffb11a";
-        ctx.fillStyle = "#ffb11a";
-
-        ctx.beginPath();
-        ctx.arc(mx, my, mainStarScreenRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Сбрасываем свечение, чтобы фоновые звезды не горели
-        ctx.shadowBlur = 0;
-
-        requestAnimationFrame(draw);
+          requestAnimationFrame(draw);
       }
 
       // Запускаем рендеринг нашего космоса
       draw();
 
-      // ЖЕЛЕЗОБЕТОННЫЙ КЛИК ПО ЗВЕЗДЕ
+      // КЛИК СТРОГО ПО ЦЕНТРАЛЬНОЙ ЗВЕЗДЕ
       canvas.addEventListener("click", (e) => {
-        // Вычисляем расстояние от курсора до центра Главной Звезды
-        const distance = Math.sqrt(
-          (e.clientX - mainStarScreenX) ** 2 +
-            (e.clientY - mainStarScreenY) ** 2
-        );
-
-        // Если кликнули точно по звезде — открываем окно оплаты!
-        if (distance <= mainStarScreenRadius + 10) {
-          modal.style.display = "flex";
-        }
+          const distance = Math.sqrt((e.clientX - mainStarScreenX) ** 2 + (e.clientY - mainStarScreenY) ** 2);
+          if (distance <= mainStarScreenRadius + 15) {
+              modal.style.display = "flex";
+          }
       });
 
       // Кнопка отмены
@@ -265,7 +176,7 @@
         usernameInput.value = "";
       });
 
-      // Логика кнопки "Я оплатил" с отправкой в Supabase
+      // Кнопка оплаты и отправка в Supabase
       submitBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
 
@@ -281,32 +192,23 @@
         try {
           const { data, error } = await supabaseClient
             .from("purchased_stars")
-            .insert([
-              {
-                star_number: 1,
-                user_name: name,
-                wallet_address: "DOGE-Transaction-Pending",
-              },
-            ]);
+            .insert([{ star_number: 1, user_name: name, wallet_address: "DOGE-Transaction-Pending" }]);
 
           if (error) throw error;
 
           alert(`Спасибо, ${name}! Ваша звезда успешно внесена в реестр.`);
           modal.style.display = "none";
           usernameInput.value = "";
-
-          // Меняем цвет главной звезды на золотой навсегда после успешной оплаты!
-          mainStar.radius = 18; // Делаем её еще больше в знак благодарности
+          mainStar.radius = 22; // Звезда визуально вырастает в знак подтверждения!
+          
         } catch (err) {
-          console.error("Ошибка Supabase:", err);
-          alert(
-            `Ошибка базы данных: ${err.message}. Проверьте, отключен ли RLS в настройках Supabase!`
-          );
+          console.error("Ошибка базы данных Supabase:", err);
+          alert(`Ошибка базы данных: ${err.message}. Пожалуйста, убедитесь, что в панели Supabase отключен RLS для таблицы purchased_stars!`);
         } finally {
           submitBtn.innerText = "Я оплатил(а)";
           submitBtn.disabled = false;
         }
       });
     </script>
-  </body>
+</body>
 </html>
