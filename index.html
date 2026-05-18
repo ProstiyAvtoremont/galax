@@ -4,53 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DogeGalaxy — Зажги свою звезду</title>
-    <!-- Подключаем библиотеку Supabase v2 -->
+    <!-- Библиотека Supabase v2 -->
     <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body, html { width: 100%; height: 100%; overflow: hidden; background-color: #020205; font-family: "Segoe UI", Roboto, sans-serif; }
         
-        /* Интерактивный глубокий космос */
+        /* Фон глубокого космоса */
         .space-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1; cursor: pointer;
-            background: radial-gradient(circle at center, #0a0a1a 0%, #020205 100%);
+            z-index: 1; background: radial-gradient(circle at center, #0a0a20 0%, #020205 100%);
         }
 
-        /* Статичные мерцающие фоновые звезды (CSS магия) */
-        .star {
-            position: absolute; background-color: #fff; border-radius: 50%;
-            animation: blink 3s infinite ease-in-out; opacity: 0.3;
-        }
-        @keyframes blink { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+        /* Настоящие, прописанные в CSS мерцающие звезды вокруг */
+        .star { position: absolute; background-color: #fff; border-radius: 50%; animation: blink 3s infinite ease-in-out; }
+        .s1 { top: 15%; left: 20%; width: 2px; height: 2px; animation-delay: 0.5s; }
+        .s2 { top: 35%; left: 10%; width: 3px; height: 3px; animation-delay: 1.2s; }
+        .s3 { top: 75%; left: 15%; width: 1px; height: 1px; animation-delay: 0.2s; }
+        .s4 { top: 20%; left: 80%; width: 3px; height: 3px; animation-delay: 2s; }
+        .s5 { top: 60%; left: 85%; width: 2px; height: 2px; animation-delay: 0.8s; }
+        .s6 { top: 85%; left: 70%; width: 3px; height: 3px; animation-delay: 1.5s; }
+        .s7 { top: 10%; left: 50%; width: 2px; height: 2px; animation-delay: 2.3s; }
+        .s8 { top: 90%; left: 40%; width: 1px; height: 1px; animation-delay: 0.1s; }
+        .s9 { top: 45%; left: 75%; width: 2px; height: 2px; animation-delay: 1.7s; }
+        .s10 { top: 70%; left: 30%; width: 3px; height: 3px; animation-delay: 0.9s; }
 
-        /* Наша Главная Dogecoin Звезда строго по центру экрана */
+        @keyframes blink { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
+
+        /* Контейнер Главной Звезды Dogecoin по центру */
         .main-star-container {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%); z-index: 5; cursor: pointer;
         }
         .main-star {
-            width: 40px; height: 40px; background-color: #ffb11a; border-radius: 50%;
+            width: 50px; height: 50px; background-color: #ffb11a; border-radius: 50%;
             box-shadow: 0 0 35px #ffb11a, 0 0 70px rgba(255, 177, 26, 0.6);
-            animation: pulse 2.5s infinite ease-in-out; transition: all 0.3s;
+            animation: pulse 2s infinite ease-in-out; transition: all 0.2s;
         }
-        .main-star:hover { transform: scale(1.15); box-shadow: 0 0 50px #ffb11a; }
         
         @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 30px #ffb11a; }
-            50% { transform: scale(1.1); box-shadow: 0 0 55px #ffb11a, 0 0 90px rgba(255, 177, 26, 0.8); }
+            0%, 100% { transform: scale(1); box-shadow: 0 0 35px #ffb11a; }
+            50% { transform: scale(1.15); box-shadow: 0 0 60px #ffb11a, 0 0 95px rgba(255, 177, 26, 0.8); }
         }
 
-        /* Красивое всплывающее неоновое окно */
+        /* Окно оплаты (Вынос на самый верхний уровень доверия браузера) */
         .modal {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(10, 10, 15, 0.96); backdrop-filter: blur(15px);
-            border: 2px solid #ffb11a; border-radius: 16px; padding: 30px;
-            z-index: 9999; width: 90%; max-width: 400px; color: #fff;
-            box-shadow: 0 0 40px rgba(255, 177, 26, 0.5);
+            background: #0b0b12; border: 2px solid #ffb11a; border-radius: 16px; padding: 30px;
+            z-index: 999999; width: 90%; max-width: 400px; color: #fff;
+            box-shadow: 0 0 50px rgba(255, 177, 26, 0.6);
             display: none; flex-direction: column; gap: 15px;
         }
-        .modal h2 { color: #ffb11a; text-align: center; font-size: 22px; margin-bottom: 5px; }
+        .modal h2 { color: #ffb11a; text-align: center; font-size: 22px; }
         .modal input {
             background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px; padding: 12px; color: #fff; font-size: 16px; width: 100%; outline: none;
@@ -58,29 +63,33 @@
         .modal input:focus { border-color: #ffb11a; }
         .wallet-box {
             background: rgba(255, 177, 26, 0.1); border: 1px dashed #ffb11a;
-            padding: 10px; border-radius: 8px; font-family: monospace;
-            font-size: 13px; word-break: break-all; text-align: center; margin: 10px 0;
+            padding: 12px; border-radius: 8px; font-family: monospace;
+            font-size: 13px; word-break: break-all; text-align: center; margin: 5px 0;
         }
         .btn {
             background: #ffb11a; color: #000; border: none; padding: 12px;
-            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
-            transition: all 0.2s; text-align: center;
+            border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
         }
-        .btn:hover { background: #ffe066; transform: scale(1.02); }
         .btn-close { background: transparent; color: #aaa; font-size: 14px; cursor: pointer; border: none; text-decoration: underline; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <!-- 1. Наш независимый космос -->
-    <div class="space-bg" id="space"></div>
+    <!-- Наш глубокий космос -->
+    <div class="space-bg">
+        <!-- Железобетонные звезды вокруг, прописанные прямо в HTML -->
+        <div class="star s1"></div><div class="star s2"></div><div class="star s3"></div>
+        <div class="star s4"></div><div class="star s5"></div><div class="star s6"></div>
+        <div class="star s7"></div><div class="star s8"></div><div class="star s9"></div>
+        <div class="star s10"></div>
+    </div>
 
-    <!-- 2. Главная неоновая звезда Dogecoin -->
+    <!-- Главная Doge Звезда (Клик на неё гарантированно вызовет функцию) -->
     <div class="main-star-container" id="star-trigger">
         <div class="main-star"></div>
     </div>
 
-    <!-- 3. Всплывающее окно оплаты -->
+    <!-- Всплывающее окно оплаты -->
     <div id="payment-modal" class="modal">
       <h2>Зажечь Звезду #1</h2>
       <p style="font-size: 14px; text-align: center; color: #ccc">Оставьте свое имя в цифровой галактике</p>
@@ -92,48 +101,31 @@
     </div>
 
     <script>
-      // ИНИЦИАЛИЗАЦИЯ SUPABASE
+      // ИНИЦИАЛИЗАЦИЯ БЕЗОПАСНОГО КЛИЕНТА SUPABASE
       const SUPABASE_URL = "https://supabase.co";
       const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
+      
       const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      const space = document.getElementById("space");
       const starTrigger = document.getElementById("star-trigger");
       const modal = document.getElementById("payment-modal");
       const closeBtn = document.getElementById("close-btn");
       const submitBtn = document.getElementById("submit-btn");
       const usernameInput = document.getElementById("username-input");
 
-      // Автоматическая генерация 150 мерцающих звезд средствами HTML
-      for (let i = 0; i < 150; i++) {
-          const star = document.createElement("div");
-          star.className = "star";
-          star.style.left = Math.random() * 100 + "%";
-          star.style.top = Math.random() * 100 + "%";
-          const size = Math.random() * 3;
-          star.style.width = size + "px";
-          star.style.height = size + "px";
-          star.style.animationDelay = Math.random() * 3 + "s";
-          space.appendChild(star);
-      }
-
-      // КЛИК СТРОГО ПО ЗВЕЗДЕ ОТКРЫВАЕТ ОКНО
+      // НАПРАВЛЯЕМ КЛИК НАПРЯМУЮ ЧЕРЕЗ БРАУЗЕРНЫЙ ТРИГГЕР
       starTrigger.addEventListener("click", (e) => {
-          e.stopPropagation();
           modal.style.display = "flex";
       });
 
       // Кнопка отмены
-      closeBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
+      closeBtn.addEventListener("click", () => {
         modal.style.display = "none";
         usernameInput.value = "";
       });
 
-      // Логика кнопки "Я оплатил" с отправкой в Supabase
-      submitBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-
+      // Логика кнопки "Я оплатил"
+      submitBtn.addEventListener("click", async () => {
         const name = usernameInput.value.trim();
         if (!name) {
           alert("Пожалуйста, введите ваше имя!");
@@ -154,13 +146,13 @@
           modal.style.display = "none";
           usernameInput.value = "";
           
-          // Визуальный эффект: звезда после оплаты горит синим неоном в знак подтверждения!
+          // Эффект триумфа: звезда меняет цвет на неоново-синий
           document.querySelector(".main-star").style.backgroundColor = "#00f0ff";
           document.querySelector(".main-star").style.boxShadow = "0 0 35px #00f0ff, 0 0 70px rgba(0, 240, 255, 0.6)";
           
         } catch (err) {
           console.error("Ошибка Supabase:", err);
-          alert(`Ошибка: ${err.message}. Проверьте, отключен ли RLS в Supabase для таблицы purchased_stars!`);
+          alert(`Ошибка базы данных: ${err.message}. Включите доступ (Disable RLS) в панели Supabase!`);
         } finally {
           submitBtn.innerText = "Я оплатил(а)";
           submitBtn.disabled = false;
