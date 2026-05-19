@@ -94,68 +94,73 @@
             });
         }
 
-        // --- МЯГКИЙ БЕЗОПАСНЫЙ СИНТЕЗАТОР ЗВУКА ---
+        // --- КРИСТАЛЬНО ЧИСТЫЙ МЕДИТАТИВНЫЙ ЭМБИЕНТ ---
         let audioCtx = null;
         let isPlaying = false;
-        let oscMain, oscSub, filter, gainNode, lfo;
+        let ambientInterval = null;
+
+        // Функция создания одного мягкого, «наплывающего» звукового колебания
+        function playTone(freq, duration, maxVolume) {
+            if (!audioCtx || !isPlaying) return;
+
+            // Создаем осциллятор (чистая синусоида) и узел громкости
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+            // Настройка волнообразной громкости (плавное появление и долгое затухание)
+            const now = audioCtx.currentTime;
+            gainNode.gain.setValueAtTime(0, now);
+            // Звук плавно нарастает (атака)
+            gainNode.gain.linearRampToValueAtTime(maxVolume, now + duration * 0.4);
+            // Звук плавно растворяется (затухание)
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+            // Соединяем и запускаем
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + duration);
+        }
 
         function startAmbient() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // Используем только мягкие синусоидальные волны
-            oscMain = audioCtx.createOscillator();
-            oscSub = audioCtx.createOscillator();
-            
-            filter = audioCtx.createBiquadFilter();
-            gainNode = audioCtx.createGain();
+            isPlaying = true;
 
-            // Базовый бархатный тон
-            oscMain.type = 'sine';
-            oscMain.frequency.setValueAtTime(65.41, audioCtx.currentTime); // Мягкая нота До
-            
-            // Дополнительный тон для объемного звучания
-            oscSub.type = 'sine';
-            oscSub.frequency.setValueAtTime(98.00, audioCtx.currentTime); // Нота Соль (идеальный созвучный интервал)
+            // Гармонический космический аккорд (ноты МИ, ЛЯ, СИ высокой тональности)
+            const notes = [329.63, 440.00, 493.88, 587.33, 659.25];
 
-            // Настройка глубокого фильтра (срезаем всё, что выше мягкого баса)
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(90, audioCtx.currentTime); // Очень низкий срез для мягкости
-            filter.Q.setValueAtTime(1, audioCtx.currentTime);
-
-            // Начальная минимальная громкость (плавный старт за 3 секунды)
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 3);
-
-            // Соединяем компоненты
-            oscMain.connect(filter);
-            oscSub.connect(filter);
-            filter.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            oscMain.start();
-            oscSub.start();
-
-            // Автоматическое "дыхание" звука (плавный наплыв и затухание)
-            function pulseVolume() {
+            function triggerWave() {
                 if (!isPlaying) return;
-                const now = audioCtx.currentTime;
-                // Громкость мягко колышется, создавая расслабляющий эффект
-                gainNode.gain.linearRampToValueAtTime(0.15 + Math.random() * 0.15, now + 4 + Math.random() * 2);
-                setTimeout(pulseVolume, 5000);
+
+                // Выбираем две случайные гармоничные ноты
+                const note1 = notes[Math.floor(Math.random() * notes.length)];
+                const note2 = notes[Math.floor(Math.random() * notes.length)];
+
+                // Запускаем их волнообразно с очень маленькой громкостью (всего 3-4%), чтобы не давило на уши
+                playTone(note1, 6 + Math.random() * 4, 0.03);
+                
+                setTimeout(() => {
+                    playTone(note2, 7 + Math.random() * 3, 0.02);
+                }, 2000);
             }
-            pulseVolume();
+
+            // Запускаем первую волну сразу
+            triggerWave();
+            // Повторяем волны каждые 6 секунд, создавая бесконечный перелив
+            ambientInterval = setInterval(triggerWave, 6000);
         }
 
         function stopAmbient() {
-            if (gainNode && audioCtx) {
-                const now = audioCtx.currentTime;
-                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.linearRampToValueAtTime(0, now + 1.5); // Плавное исчезновение за 1.5 сек
+            isPlaying = false;
+            clearInterval(ambientInterval);
+            if (audioCtx) {
                 setTimeout(() => {
-                    oscMain.stop();
-                    oscSub.stop();
                     audioCtx.close();
-                }, 1600);
+                }, 1000);
             }
         }
 
@@ -163,13 +168,11 @@
         audioBtn.addEventListener('click', () => {
             if (!isPlaying) {
                 startAmbient();
-                isPlaying = true;
                 audioBtn.innerText = "ВЫКЛЮЧИТЬ ЗВУК";
                 audioBtn.style.borderColor = "rgba(255, 100, 100, 0.5)";
                 audioBtn.style.color = "#ff6464";
             } else {
                 stopAmbient();
-                isPlaying = false;
                 audioBtn.innerText = "ВКЛЮЧИТЬ ЭМБИЕНТ";
                 audioBtn.style.borderColor = "rgba(255, 215, 0, 0.5)";
                 audioBtn.style.color = "#ffd700";
