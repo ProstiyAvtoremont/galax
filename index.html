@@ -3,55 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Starfield Experience</title>
+    <title>DOGE Starfield Space — Buy Your Own Star</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #020208;
-            font-family: sans-serif;
+            background-color: #010105;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #fff;
         }
         canvas {
             display: block;
             position: absolute;
             top: 0;
             left: 0;
+            cursor: crosshair;
         }
-        /* Music Control Button */
-        #audio-btn {
+        
+        /* UI Control Buttons Container */
+        .controls-container {
             position: absolute;
-            bottom: 20px;
+            bottom: 25px;
             left: 50%;
             transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .ui-btn {
             padding: 12px 24px;
-            background: rgba(255, 215, 0, 0.15);
-            border: 1px solid rgba(255, 215, 0, 0.5);
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.4);
             border-radius: 30px;
             color: #ffd700;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: bold;
             letter-spacing: 1px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
-            z-index: 10;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         }
-        #audio-btn:hover {
-            background: rgba(255, 215, 0, 0.3);
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        .ui-btn:hover {
+            background: rgba(255, 215, 0, 0.25);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Hover Tooltip Card */
+        #star-tooltip {
+            position: absolute;
+            padding: 15px;
+            background: rgba(5, 5, 15, 0.85);
+            border: 1px solid #ffd700;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 13px;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+            min-width: 200px;
+            transition: opacity 0.2s ease;
+        }
+        #star-tooltip.supernova {
+            border-color: #ff3366;
+            box-shadow: 0 0 25px rgba(255, 51, 102, 0.3);
+        }
+        #star-tooltip.constellation {
+            border-color: #00ffff;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
+        }
+        .tooltip-title { font-weight: bold; font-size: 15px; margin-bottom: 4px; }
+        .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
+        .tooltip-meta { color: #ffd700; font-size: 12px; }
+
+        /* Neon Payment Modal */
+        #payment-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: rgba(7, 7, 20, 0.95);
+            border: 1px solid #ffd700;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.25);
+            border-radius: 20px;
+            padding: 30px;
+            width: 360px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            z-index: 200;
+            display: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #payment-modal.active {
+            display: block;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 20px;
+            transition: color 0.2s;
+        }
+        .modal-close:hover { color: #fff; }
+        .tier-box {
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px;
+            margin: 12px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.02);
+        }
+        .tier-box:hover {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.05);
+        }
+        .pay-btn {
+            width: 100%;
+            padding: 12px;
+            background: #ffd700;
+            border: none;
+            border-radius: 25px;
+            color: #000;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 15px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
         }
     </style>
 </head>
 <body>
 
     <canvas id="starfield"></canvas>
-    <button id="audio-btn">ENABLE AMBIENT</button>
+    
+    <div class="controls-container">
+        <button class="ui-btn" id="audio-btn">ENABLE AMBIENT</button>
+    </div>
+
+    <!-- Tooltip Element -->
+    <div id="star-tooltip"></div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal">
+        <span class="modal-close" id="modal-close">&times;</span>
+        <h2 style="color: #ffd700; margin-top: 0;">Claim This Star</h2>
+        <p style="font-size: 13px; opacity: 0.8; margin-bottom: 20px;">Immortalize yourself on the blockchain starfield map using DOGE.</p>
+        
+        <div class="tier-box">
+            <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:3px;">Your Name + Text ($1 in DOGE)</div>
+        </div>
+        <div class="tier-box">
+            <div style="font-weight:bold; color:#ff3366;">✨ Supernova</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:3px;">Larger size, pulsing color, X/Instagram link ($3-$5)</div>
+        </div>
+        <div class="tier-box">
+            <div style="font-weight:bold; color:#00ffff;">🌌 Constellation</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:3px;">B2B Group branding / Custom logo shape ($20-$50)</div>
+        </div>
+
+        <button class="pay-btn">Proceed to Web3 Payment</button>
+    </div>
 
     <script>
         const canvas = document.getElementById('starfield');
         const ctx = canvas.getContext('2d');
         const audioBtn = document.getElementById('audio-btn');
+        const tooltip = document.getElementById('star-tooltip');
+        const modal = document.getElementById('payment-modal');
+        const modalClose = document.getElementById('modal-close');
 
-        // Screen Resize Setup
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -67,10 +198,15 @@
             cy = canvas.height / 2;
         });
 
-        // 1. Core Stars Setup (5000 Stars)
+        // CAMERA SYSTEMS: Smooth Init Fly-in Flight Effect
+        let globalZOffset = 5000; // Camera starts far away in dark space
+        const targetZOffset = 0;   // Influx point target
+        const flyInSpeed = 0.02;   // Lerp speed multiplier
+
+        // 1. Core Stars Array (5000 Stars)
         const numStars = 5000;
         const stars = [];
-        const rotateSpeed = 0.5;
+        const rotateSpeed = 0.3;
 
         for (let i = 0; i < numStars; i++) {
             stars.push({
@@ -78,14 +214,34 @@
                 y: (Math.random() - 0.5) * 3000,
                 z: Math.random() * 3000,
                 phase: Math.random() * Math.PI * 2,
-                flickerSpeed: 0.02 + Math.random() * 0.05
+                flickerSpeed: 0.02 + Math.random() * 0.05,
+                isBought: false,
+                screenX: 0,
+                screenY: 0,
+                currentSize: 0
             });
         }
 
-        // 2. Flying Cosmic Particles Setup (100 Particles)
+        // Add Premium Purchased Demo Stars to the grid for interactive testing
+        stars[100].isBought = true;
+        stars[100].tier = 'basic';
+        stars[100].owner = '@dogecoin_fan';
+        stars[100].message = 'To the moon! 🚀 Loving this space.';
+        
+        stars[250].isBought = true;
+        stars[250].tier = 'supernova';
+        stars[250].owner = '@elonmusk';
+        stars[250].message = 'DOGE starfield is beautiful. Next stop: Mars.';
+        
+        stars[400].isBought = true;
+        stars[400].tier = 'constellation';
+        stars[400].owner = 'Dogecoin Foundation';
+        stars[400].message = 'Official corporate B2B cluster ecosystem.';
+
+        // 2. Flying Cosmic Particles (100 Particles)
         const numParticles = 100;
         const particles = [];
-        const flySpeed = 4;
+        const flySpeed = 5;
 
         for (let i = 0; i < numParticles; i++) {
             particles.push({
@@ -95,31 +251,23 @@
             });
         }
 
-        // --- CRYSTAL CLEAR MEDITATIVE AMBIENT GENERATOR ---
+        // --- CRYSTAL CLEAR MEDITATIVE AMBIENT ---
         let audioCtx = null;
         let isPlaying = false;
         let ambientInterval = null;
 
-        // Function to play a single smooth, fading tone
         function playTone(freq, duration, maxVolume) {
             if (!audioCtx || !isPlaying) return;
-
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-            
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
             const now = audioCtx.currentTime;
             gainNode.gain.setValueAtTime(0, now);
-            // Smooth attack
             gainNode.gain.linearRampToValueAtTime(maxVolume, now + duration * 0.4);
-            // Smooth decay
             gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
             osc.connect(gainNode);
             gainNode.connect(audioCtx.destination);
-            
             osc.start(now);
             osc.stop(now + duration);
         }
@@ -127,24 +275,12 @@
         function startAmbient() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             isPlaying = true;
-
-            // Harmonious cosmic chord (E, A, B notes in higher octaves)
             const notes = [329.63, 440.00, 493.88, 587.33, 659.25];
-
             function triggerWave() {
                 if (!isPlaying) return;
-
                 const note1 = notes[Math.floor(Math.random() * notes.length)];
-                const note2 = notes[Math.floor(Math.random() * notes.length)];
-
-                // Play delicate tones with very low volume (3-4%)
-                playTone(note1, 6 + Math.random() * 4, 0.03);
-                
-                setTimeout(() => {
-                    playTone(note2, 7 + Math.random() * 3, 0.02);
-                }, 2000);
+                playTone(note1, 7 + Math.random() * 3, 0.03);
             }
-
             triggerWave();
             ambientInterval = setInterval(triggerWave, 6000);
         }
@@ -152,14 +288,9 @@
         function stopAmbient() {
             isPlaying = false;
             clearInterval(ambientInterval);
-            if (audioCtx) {
-                setTimeout(() => {
-                    audioCtx.close();
-                }, 1000);
-            }
+            if (audioCtx) { setTimeout(() => { audioCtx.close(); }, 1000); }
         }
 
-        // Button Click Logic
         audioBtn.addEventListener('click', () => {
             if (!isPlaying) {
                 startAmbient();
@@ -174,14 +305,94 @@
             }
         });
 
-        // 3. Main Animation Loop (Rendering)
-        function animate() {
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // --- INTERACTIVITY HOVER & CLICK HANDLING ---
+        let hoveredStar = null;
 
-            // TWINKLING STARS
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            let foundStar = null;
+
+            // Search for collision with bought premium stars
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
+                if (!star.isBought) continue;
+
+                // Checking hit box radius based on current dynamic scale
+                const dx = mouseX - star.screenX;
+                const dy = mouseY - star.screenY;
+                const hitRadius = Math.max(star.currentSize * 3, 10); 
+
+                if (dx * dx + dy * dy < hitRadius * hitRadius) {
+                    foundStar = star;
+                    break;
+                }
+            }
+
+            if (foundStar) {
+                hoveredStar = foundStar;
+                tooltip.style.display = 'block';
+                tooltip.style.left = `${e.clientX + 15}px`;
+                tooltip.style.top = `${e.clientY + 15}px`;
+                
+                // Styling tooltip layout according to premium tier definition
+                tooltip.className = foundStar.tier;
+                
+                let tierLabel = '⭐ Basic Node';
+                if (foundStar.tier === 'supernova') tierLabel = '⚡ Supernova Core';
+                if (foundStar.tier === 'constellation') tierLabel = '🌌 Mega Constellation';
+
+                tooltip.innerHTML = `
+                    <div class="tooltip-type">${tierLabel}</div>
+                    <div class="tooltip-title">${foundStar.owner}</div>
+                    <div style="margin-bottom:8px; font-style:italic; opacity:0.9;">"${foundStar.message}"</div>
+                    <div class="tooltip-meta">Verified Space Citizen</div>
+                `;
+            } else {
+                hoveredStar = null;
+                tooltip.style.display = 'none';
+            }
+        });
+
+        // Open Payment Wall Canvas System Click Setup
+        canvas.addEventListener('click', (e) => {
+            if (hoveredStar) {
+                // If clicked on an already bought star, open their socials profile mock
+                alert(`Redirecting to profile page of ${hoveredStar.owner}`);
+                return;
+            }
+            // If clicked on an empty zone space, trigger purchase window overlay
+            modal.style.display = 'block';
+            setTimeout(() => modal.classList.add('active'), 10);
+        });
+
+        modalClose.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+        });
+
+        // 3. Render Engine Pipeline Animation Loop
+        const clock = new THREE ? null : { getElapsedTime: (() => { let start = Date.now(); return () => (Date.now() - start)/1000; })() };
+        let startTime = Date.now();
+
+        function animate() {
+            ctx.fillStyle = '#000002';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const time = (Date.now() - startTime) * 0.001;
+
+            // Camera Fly-In interpolation
+            if (globalZOffset > targetZOffset) {
+                globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
+            }
+
+            // TWINKLING STARS RENDERING
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                
+                // Rotational field physics
                 const rad = rotateSpeed * 0.005;
                 const cos = Math.cos(rad);
                 const sin = Math.sin(rad);
@@ -190,61 +401,91 @@
                 star.x = x1;
                 star.y = y1;
 
-                const factor = 800 / (star.z + 1);
-                const screenX = cx + star.x * factor;
-                const screenY = cy + star.y * factor;
+                // Projection with camera fly-in depth tracking offset integration
+                const factor = 800 / (star.z + globalZOffset + 1);
+                star.screenX = cx + star.x * factor;
+                star.screenY = cy + star.y * factor;
 
-                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                if (star.screenX >= 0 && star.screenX <= canvas.width && star.screenY >= 0 && star.screenY <= canvas.height) {
                     star.phase += star.flickerSpeed;
                     const brightness = 0.4 + Math.sin(star.phase) * 0.6;
-                    const baseSize = (1 - star.z / 3000) * 2.5;
-                    const size = Math.max(0.5, baseSize * (0.7 + brightness * 0.3));
+                    const baseSize = (1 - (star.z + globalZOffset) / 8000) * 2.2;
+                    
+                    let size = Math.max(0.4, baseSize * (0.7 + brightness * 0.3));
+                    let starColor = `rgba(255, 235, 120, ${brightness})`;
+                    let auraColor = `rgba(255, 215, 0, ${brightness * 0.15})`;
 
+                    // Modify rendering properties if star belongs to a user
+                    if (star.isBought) {
+                        if (star.tier === 'basic') {
+                            size *= 1.8;
+                            starColor = `rgba(255, 240, 150, ${brightness})`;
+                        } else if (star.tier === 'supernova') {
+                            // Pulsing crimson supernova effect
+                            const pulse = 1.2 + Math.sin(time * 6) * 0.4;
+                            size *= 2.8 * pulse;
+                            starColor = `rgba(255, 51, 102, 1)`;
+                            auraColor = `rgba(255, 51, 102, 0.3)`;
+                        } else if (star.tier === 'constellation') {
+                            // Electric cyan cyber grid node
+                            size *= 3.5;
+                            starColor = `rgba(0, 255, 255, 1)`;
+                            auraColor = `rgba(0, 255, 255, 0.35)`;
+                        }
+                    }
+
+                    star.currentSize = size; // Save hitbox size tracking variables
+
+                    // Outer Aura Core
                     ctx.beginPath();
-                    ctx.arc(screenX, screenY, size * 2.5, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 215, 0, ${brightness * 0.15})`;
+                    ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
+                    ctx.fillStyle = auraColor;
                     ctx.fill();
 
+                    // Inner Sharp Point
                     ctx.beginPath();
-                    ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 235, 120, ${brightness})`;
+                    ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                    ctx.fillStyle = starColor;
                     ctx.fill();
                 }
             }
 
-            // FLYING PARTICLES
-            for (let i = 0; i < numParticles; i++) {
-                const p = particles[i];
-                p.z -= flySpeed;
+            // FLYING PARTICLES (Speed field space warp effect)
+            // Show only after initial zoom in process stabilizes
+            if (globalZOffset < 500) {
+                for (let i = 0; i < numParticles; i++) {
+                    const p = particles[i];
+                    p.z -= flySpeed;
 
-                if (p.z <= 0) {
-                    p.z = 2000;
-                    p.x = (Math.random() - 0.5) * 2000;
-                    p.y = (Math.random() - 0.5) * 2000;
-                }
+                    if (p.z <= 0) {
+                        p.z = 2000;
+                        p.x = (Math.random() - 0.5) * 2000;
+                        p.y = (Math.random() - 0.5) * 2000;
+                    }
 
-                const pFactor = 800 / (p.z + 1);
-                const pScreenX = cx + p.x * pFactor;
-                const pScreenY = cy + p.y * pFactor;
+                    const pFactor = 800 / (p.z + 1);
+                    const pScreenX = cx + p.x * pFactor;
+                    const pScreenY = cy + p.y * pFactor;
 
-                if (pScreenX >= 0 && pScreenX <= canvas.width && pScreenY >= 0 && pScreenY <= canvas.height) {
-                    const pSize = (1 - p.z / 2000) * 5; 
-                    const alpha = (1 - p.z / 2000) * 0.7;
+                    if (pScreenX >= 0 && pScreenX <= canvas.width && pScreenY >= 0 && pScreenY <= canvas.height) {
+                        const pSize = (1 - p.z / 2000) * 4.5; 
+                        const alpha = (1 - p.z / 2000) * 0.6;
 
-                    ctx.beginPath();
-                    ctx.moveTo(pScreenX, pScreenY);
-                    const tailX = cx + p.x * (800 / (p.z + flySpeed * 3 + 1));
-                    const tailY = cy + p.y * (800 / (p.z + flySpeed * 3 + 1));
-                    ctx.lineTo(tailX, tailY);
-                    
-                    ctx.strokeStyle = `rgba(255, 230, 150, ${alpha})`;
-                    ctx.lineWidth = pSize * 0.4;
-                    ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(pScreenX, pScreenY);
+                        const tailX = cx + p.x * (800 / (p.z + flySpeed * 2.5 + 1));
+                        const tailY = cy + p.y * (800 / (p.z + flySpeed * 2.5 + 1));
+                        ctx.lineTo(tailX, tailY);
+                        
+                        ctx.strokeStyle = `rgba(255, 220, 160, ${alpha})`;
+                        ctx.lineWidth = pSize * 0.4;
+                        ctx.stroke();
 
-                    ctx.beginPath();
-                    ctx.arc(pScreenX, pScreenY, pSize, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 255, 210, ${alpha + 0.3})`;
-                    ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(pScreenX, pScreenY, pSize, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(255, 255, 230, ${alpha + 0.3})`;
+                        ctx.fill();
+                    }
                 }
             }
 
