@@ -1,240 +1,198 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Бесконечная Галактика</title>
+    <title>DOGE Starfield Space — Buy Your Own Star</title>
+    <!-- Подключаем стабильную библиотеку Supabase -->
+    <script src="https://jsdelivr.net"></script>
     <style>
-        body, html {
+        body {
             margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
             overflow: hidden;
-            background-color: #000;
+            background-color: #010105;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #fff;
         }
         canvas {
-            position: fixed;
+            display: block;
+            position: absolute;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            cursor: crosshair;
+        }
+        
+        .controls-container {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .ui-btn {
+            padding: 12px 24px;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            border-radius: 30px;
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(8px);
+        }
+        .ui-btn:hover {
+            background: rgba(255, 215, 0, 0.25);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        /* Hover Tooltip Card */
+        #star-tooltip {
+            position: absolute;
+            padding: 15px;
+            background: rgba(5, 5, 15, 0.9);
+            border: 1px solid #ffd700;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 13px;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+            min-width: 220px;
+        }
+        #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3); }
+        #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3); }
+        
+        .tooltip-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #ffd700; }
+        #star-tooltip.supernova .tooltip-title { color: #ff3366; }
+        #star-tooltip.constellation .tooltip-title { color: #00ffff; }
+        .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
+        .tooltip-meta { color: #888; font-size: 10px; margin-top: 8px; word-break: break-all; }
+
+        /* Neon Payment Modal */
+        #payment-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: rgba(7, 7, 20, 0.95);
+            border: 1px solid #ffd700;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.25);
+            border-radius: 20px;
+            padding: 25px;
+            width: 360px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            z-index: 200;
+            display: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #payment-modal.active {
             display: block;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
         }
-    </style>
-    <!-- Подключаем стабильную версию Three.js -->
-    <script src="https://cloudflare.com"></script>
-</head>
-<body>
-
-    <canvas id="galaxy"></canvas>
-
-    <script>
-        // --- НАСТРОЙКИ ---
-        const TOTAL_SECTIONS = 6;        // Количество секторов глубины
-        const STARS_PER_SECTION = 10000; // Звезд на один сектор (всего 60 000)
-        const BASE_STAR_SIZE = 4.0;      // Размер обычных звезд в пикселях
-        const FLIGHT_SPEED = 6.0;        // Скорость автоматического полета
-
-        // --- ИНИЦИАЛИЗАЦИЯ СЦЕНЫ ---
-        const canvas = document.getElementById('galaxy');
-        const scene = new THREE.Scene();
-        
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5; 
-
-        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-        // --- СОЗДАНИЕ СИСТЕМЫ ЧАСТИЦ (ЗВЕЗД) ---
-        const totalStars = STARS_PER_SECTION * TOTAL_SECTIONS;
-        const geometry = new THREE.BufferGeometry();
-        
-        // Массивы для хранения параметров каждой звезды
-        const positions = new Float32Array(totalStars * 3);
-        const colors = new Float32Array(totalStars * 3);
-        const sizes = new Float32Array(totalStars);
-        const phases = new Float32Array(totalStars);
-
-        const sectionDepth = 25; 
-        let starIndex = 0;
-
-        // Распределяем 60 000 звезд по космосу
-        for (let s = 0; s < TOTAL_SECTIONS; s++) {
-            const zOffset = -s * sectionDepth;
-
-            for (let i = 0; i < STARS_PER_SECTION; i++) {
-                // Координаты
-                positions[starIndex * 3] = (Math.random() - 0.5) * 60;     // X
-                positions[starIndex * 3 + 1] = (Math.random() - 0.5) * 40; // Y
-                positions[starIndex * 3 + 2] = zOffset + (Math.random() - 0.5) * sectionDepth; // Z
-
-                // Начальный белый цвет (RGB: 1, 1, 1)
-                colors[starIndex * 3] = 1.0;
-                colors[starIndex * 3 + 1] = 1.0;
-                colors[starIndex * 3 + 2] = 1.0;
-
-                // Базовый размер
-                sizes[starIndex] = BASE_STAR_SIZE;
-
-                // Случайная фаза/скорость для мерцания
-                phases[starIndex] = 2.0 + Math.random() * 5.0;
-
-                starIndex++;
-            }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 20px;
         }
 
-        // Записываем массивы в геометрию Three.js
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        .tier-box {
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.02);
+            text-align: left;
+        }
+        .tier-box.selected {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.08);
+        }
 
-        // Создаем текстуру круглой светящейся точки (чтобы звезды не были квадратными пикселями)
-        const createStarTexture = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = 16;
-            canvas.height = 16;
-            const ctx = canvas.getContext('2d');
-            const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-            gradient.addColorStop(0, 'rgba(255,255,255,1)');
-            gradient.addColorStop(1, 'rgba(255,255,255,0)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 16, 16);
-            return new THREE.CanvasTexture(canvas);
-        };
-
-        // Специальный материал для частиц с поддержкой кастомных шейдеров размера
-        const material = new THREE.PointsMaterial({
-            size: 1.0,
-            vertexColors: true,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            map: createStarTexture()
-        });
-
-        // Кастомный шейдер, который связывает массив размеров sizes с экраном
-        material.onBeforeCompile = (shader) => {
-            geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
             
-            shader.vertexShader = `
-                attribute float aSize;
-                ${shader.vertexShader}
-            `.replace(
-                `gl_PointSize = size;`,
-                `gl_PointSize = aSize;`
-            );
-        };
-
-        const starPoints = new THREE.Points(geometry, material);
-        scene.add(starPoints);
-
-        // --- ИНТЕРАКТИВ (НАВЕДЕНИЕ МЫШИ) ---
-        const raycaster = new THREE.Raycaster();
-        raycaster.params.Points.threshold = 0.3; // Радиус захвата мыши вокруг звезды
-        
-        const mouse = new THREE.Vector2(-100, -100);
-        let hoveredIndex = null;
-
-        window.addEventListener('mousemove', (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            ownerInput.value = "";
+            msgInput.value = "";
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+            payBtn.disabled = false;
+            payBtn.innerText = "Proceed to Web3 Payment";
         });
 
-        window.addEventListener('mouseleave', () => {
-            mouse.set(-100, -100);
-        });
-
-        function updateHover() {
-            raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(starPoints);
-
-            if (intersects.length > 0) {
-                // Берем индекс конкретной точки в массиве
-                const idx = intersects[0].index;
-
-                if (hoveredIndex !== idx) {
-                    if (hoveredIndex !== null) resetStar(hoveredIndex);
-                    hoveredIndex = idx;
-                    highlightStar(idx);
-                }
-            } else {
-                if (hoveredIndex !== null) {
-                    resetStar(hoveredIndex);
-                    hoveredIndex = null;
-                }
-            }
-        }
-
-        function highlightStar(idx) {
-            // Увеличиваем в 10 раз (с 4px до 40px)
-            const sizeAttr = geometry.getAttribute('aSize');
-            if (sizeAttr) {
-                sizeAttr.setX(idx, BASE_STAR_SIZE * 10);
-                sizeAttr.needsUpdate = true;
-            }
-
-            // Красим в ярко-желтый цвет
-            const colorAttr = geometry.getAttribute('color');
-            colorAttr.setXYZ(idx, 1.0, 0.85, 0.0); // Желтый (RGB)
-            colorAttr.needsUpdate = true;
-        }
-
-        function resetStar(idx) {
-            // Возвращаем исходный размер
-            const sizeAttr = geometry.getAttribute('aSize');
-            if (sizeAttr) {
-                sizeAttr.setX(idx, BASE_STAR_SIZE);
-                sizeAttr.needsUpdate = true;
-            }
-
-            // Возвращаем белый цвет
-            const colorAttr = geometry.getAttribute('color');
-            colorAttr.setXYZ(idx, 1.0, 1.0, 1.0);
-            colorAttr.needsUpdate = true;
-        }
-
-        // --- АНИМАЦИЯ ---
-        const clock = new THREE.Clock();
-        const totalDepth = TOTAL_SECTIONS * sectionDepth;
-
+        // 3. Render Pipeline Loop
+        let startTime = Date.now();
         function animate() {
-            requestAnimationFrame(animate);
+            ctx.fillStyle = '#000002'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const time = (Date.now() - startTime) * 0.001;
 
-            const delta = clock.getDelta();
-            const time = clock.getElapsedTime();
-            
-            // Динамическое мерцание обычных звезд
-            const colorAttr = geometry.getAttribute('color');
-            for (let i = 0; i < totalStars; i++) {
-                if (i !== hoveredIndex) {
-                    // Мерцание: меняем яркость белого цвета по синусоиде от 0.2 до 1.0
-                    const brightness = 0.2 + 0.8 * Math.abs(Math.sin(time * phases[i]));
-                    colorAttr.setXYZ(i, brightness, brightness, brightness);
+            if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
+
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                const rad = rotateSpeed * 0.005; const cos = Math.cos(rad); const sin = Math.sin(rad);
+                const x1 = star.x * cos - star.y * sin; const y1 = star.y * cos + star.x * sin;
+                star.x = x1; star.y = y1;
+
+                const factor = 800 / (star.z + globalZOffset + 1);
+                star.screenX = cx + star.x * factor; star.screenY = cy + star.y * factor;
+
+                if (star.screenX >= 0 && star.screenX <= canvas.width && star.screenY >= 0 && star.screenY <= canvas.height) {
+                    star.phase += star.flickerSpeed;
+                    const brightness = 0.4 + Math.sin(star.phase) * 0.6;
+                    const baseSize = (1 - (star.z + globalZOffset) / 8000) * 2.2;
+                    
+                    let size = Math.max(0.4, baseSize * (0.7 + brightness * 0.3));
+                    let starColor = `rgba(255, 235, 120, ${brightness})`;
+                    let auraColor = `rgba(255, 215, 0, ${brightness * 0.15})`;
+
+                    if (star.isBought) {
+                        if (star.tier === 'basic') { size *= 2.0; starColor = `rgba(255, 235, 120, 1)`; } 
+                        else if (star.tier === 'supernova') {
+                            const pulse = 1.2 + Math.sin(time * 6) * 0.4;
+                            size *= 2.8 * pulse; starColor = `rgba(255, 51, 102, 1)`; auraColor = `rgba(255, 51, 102, 0.35)`;
+                        } else if (star.tier === 'constellation') {
+                            size *= 3.8; starColor = `rgba(0, 255, 255, 1)`; auraColor = `rgba(0, 255, 255, 0.4)`;
+                        }
+                    }
+
+                    star.currentSize = size;
+
+                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
+                    ctx.fillStyle = auraColor; ctx.fill();
+                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                    ctx.fillStyle = starColor; ctx.fill();
                 }
             }
-            colorAttr.needsUpdate = true;
 
-            // Камера непрерывно летит вперед по оси Z
-            camera.position.z -= FLIGHT_SPEED * delta;
-
-            // Эффект бесконечной галактики (перенос камеры на старт)
-            if (camera.position.z < -totalDepth) {
-                camera.position.z = 5;
+            if (globalZOffset < 500) {
+                for (let i = 0; i < numParticles; i++) {
+                    const p = particles[i]; p.z -= flySpeed;
+                    if (p.z <= 0) { p.z = 2000; p.x = (Math.random() - 0.5) * 2000; p.y = (Math.random() - 0.5) * 2000; }
+                    const pFactor = 800 / (p.z + 1);
+                    const pScreenX = cx + p.x * pFactor; const pScreenY = cy + p.y * pFactor;
+                    if (pScreenX >= 0 && pScreenX <= canvas.width && pScreenY >= 0 && pScreenY <= canvas.height) {
+                        const pSize = (1 - p.z / 2000) * 4.5; const alpha = (1 - p.z / 2000) * 0.6;
+                        ctx.beginPath(); ctx.moveTo(pScreenX, pScreenY);
+                        ctx.lineTo(cx + p.x * (800 / (p.z + flySpeed * 2.5 + 1)), cy + p.y * (800 / (p.z + flySpeed * 2.5 + 1)));
+                        ctx.strokeStyle = `rgba(255, 220, 160, ${alpha})`; ctx.lineWidth = pSize * 0.4; ctx.stroke();
+                    }
+                }
             }
-
-            updateHover();
-            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
         }
-
-        // --- АДАПТИВНОСТЬ ОКНА ---
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // Запуск
         animate();
     </script>
 </body>
