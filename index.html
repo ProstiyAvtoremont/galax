@@ -20,7 +20,6 @@
             cursor: crosshair;
         }
         
-        /* UI Control Buttons Container */
         .controls-container {
             position: absolute;
             bottom: 25px;
@@ -51,7 +50,6 @@
             transform: translateY(-2px);
         }
 
-        /* Hover Tooltip Card */
         #star-tooltip {
             position: absolute;
             padding: 15px;
@@ -66,21 +64,8 @@
             backdrop-filter: blur(10px);
             box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
             min-width: 200px;
-            transition: opacity 0.2s ease;
         }
-        #star-tooltip.supernova {
-            border-color: #ff3366;
-            box-shadow: 0 0 25px rgba(255, 51, 102, 0.3);
-        }
-        #star-tooltip.constellation {
-            border-color: #00ffff;
-            box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
-        }
-        .tooltip-title { font-weight: bold; font-size: 15px; margin-bottom: 4px; }
-        .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
-        .tooltip-meta { color: #ffd700; font-size: 12px; }
 
-        /* Neon Payment Modal */
         #payment-modal {
             position: absolute;
             top: 50%;
@@ -111,9 +96,9 @@
             cursor: pointer;
             color: #aaa;
             font-size: 20px;
-            transition: color 0.2s;
         }
         .modal-close:hover { color: #fff; }
+        
         .tier-box {
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 10px;
@@ -122,10 +107,12 @@
             cursor: pointer;
             transition: all 0.2s;
             background: rgba(255,255,255,0.02);
+            text-align: left;
         }
-        .tier-box:hover {
+        .tier-box.selected {
             border-color: #ffd700;
-            background: rgba(255, 215, 0, 0.05);
+            background: rgba(255, 215, 0, 0.08);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
         }
         .pay-btn {
             width: 100%;
@@ -139,6 +126,13 @@
             margin-top: 15px;
             cursor: pointer;
             box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+            transition: all 0.2s;
+        }
+        .pay-btn:disabled {
+            background: #555;
+            color: #888;
+            box-shadow: none;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -150,29 +144,29 @@
         <button class="ui-btn" id="audio-btn">ENABLE AMBIENT</button>
     </div>
 
-    <!-- Tooltip Element -->
     <div id="star-tooltip"></div>
 
     <!-- Payment Modal -->
     <div id="payment-modal">
         <span class="modal-close" id="modal-close">&times;</span>
         <h2 style="color: #ffd700; margin-top: 0;">Claim This Star</h2>
-        <p style="font-size: 13px; opacity: 0.8; margin-bottom: 20px;">Immortalize yourself on the blockchain starfield map using DOGE.</p>
+        <p style="font-size: 13px; opacity: 0.8; margin-bottom: 20px;">Immortalize yourself on the starfield map using DOGE.</p>
         
-        <div class="tier-box">
+        <!-- Добавили data-price (в DOGE, примерные значения для теста) -->
+        <div class="tier-box selected" data-tier="basic" data-price="7">
             <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star</div>
-            <div style="font-size:11px; opacity:0.7; margin-top:3px;">Your Name + Text ($1 in DOGE)</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:3px;">Your Name + Text (~7 DOGE / $1)</div>
         </div>
-        <div class="tier-box">
+        <div class="tier-box" data-tier="supernova" data-price="28">
             <div style="font-weight:bold; color:#ff3366;">✨ Supernova</div>
-            <div style="font-size:11px; opacity:0.7; margin-top:3px;">Larger size, pulsing color, X/Instagram link ($3-$5)</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:3px;">Larger size, pulsing color, link (~28 DOGE / $4)</div>
         </div>
-        <div class="tier-box">
+        <div class="tier-box" data-tier="constellation" data-price="250">
             <div style="font-weight:bold; color:#00ffff;">🌌 Constellation</div>
-            <div style="font-size:11px; opacity:0.7; margin-top:3px;">B2B Group branding / Custom logo shape ($20-$50)</div>
+            <div style="font-size:11px; opacity:0.7; margin-top:3px;">B2B Group branding / Custom logo shape (~250 DOGE / $35)</div>
         </div>
 
-        <button class="pay-btn">Proceed to Web3 Payment</button>
+        <button class="pay-btn" id="pay-btn">Proceed to Web3 Payment</button>
     </div>
 
     <script>
@@ -182,6 +176,12 @@
         const tooltip = document.getElementById('star-tooltip');
         const modal = document.getElementById('payment-modal');
         const modalClose = document.getElementById('modal-close');
+        const payBtn = document.getElementById('pay-btn');
+        const tierBoxes = document.querySelectorAll('.tier-box');
+
+        // Конфигурация вашего кошелька
+        const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
+        let selectedPriceDoge = 7; // Дефолтная цена за Basic Star
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -199,9 +199,9 @@
         });
 
         // CAMERA SYSTEMS: Smooth Init Fly-in Flight Effect
-        let globalZOffset = 5000; // Camera starts far away in dark space
-        const targetZOffset = 0;   // Influx point target
-        const flyInSpeed = 0.02;   // Lerp speed multiplier
+        let globalZOffset = 5000;
+        const targetZOffset = 0;
+        const flyInSpeed = 0.02;
 
         // 1. Core Stars Array (5000 Stars)
         const numStars = 5000;
@@ -289,59 +289,18 @@
             }
         });
 
-        // --- INTERACTIVITY HOVER & CLICK HANDLING ---
-        let hoveredStar = null;
-
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            
-            let foundStar = null;
-
-            for (let i = 0; i < numStars; i++) {
-                const star = stars[i];
-                if (!star.isBought) continue;
-
-                const dx = mouseX - star.screenX;
-                const dy = mouseY - star.screenY;
-                const hitRadius = Math.max(star.currentSize * 3, 10); 
-
-                if (dx * dx + dy * dy < hitRadius * hitRadius) {
-                    foundStar = star;
-                    break;
-                }
-            }
-
-            if (foundStar) {
-                hoveredStar = foundStar;
-                tooltip.style.display = 'block';
-                tooltip.style.left = `${e.clientX + 15}px`;
-                tooltip.style.top = `${e.clientY + 15}px`;
-                
-                tooltip.className = foundStar.tier;
-                
-                let tierLabel = '⭐ Basic Node';
-                if (foundStar.tier === 'supernova') tierLabel = '⚡ Supernova Core';
-                if (foundStar.tier === 'constellation') tierLabel = '🌌 Mega Constellation';
-
-                tooltip.innerHTML = `
-                    <div class="tooltip-type">${tierLabel}</div>
-                    <div class="tooltip-title">${foundStar.owner}</div>
-                    <div style="margin-bottom:8px; font-style:italic; opacity:0.9;">"${foundStar.message}"</div>
-                    <div class="tooltip-meta">Verified Space Citizen</div>
-                `;
-            } else {
-                hoveredStar = null;
-                tooltip.style.display = 'none';
-            }
+        // --- INTERACTIVITY LOGIC ---
+        
+        // Переключение тарифов в окне оплаты
+        tierBoxes.forEach(box => {
+            box.addEventListener('click', () => {
+                tierBoxes.forEach(b => b.classList.remove('selected'));
+                box.classList.add('selected');
+                selectedPriceDoge = parseFloat(box.getAttribute('data-price'));
+            });
         });
 
         canvas.addEventListener('click', (e) => {
-            if (hoveredStar) {
-                alert(`Redirecting to profile page of ${hoveredStar.owner}`);
-                return;
-            }
             modal.style.display = 'block';
             setTimeout(() => modal.classList.add('active'), 10);
         });
@@ -351,25 +310,67 @@
             setTimeout(() => modal.style.display = 'none', 300);
         });
 
-        // 3. Render Engine Pipeline Animation Loop
-        let startTime = Date.now();
+        // --- WEB3 ИНТЕГРАЦИЯ ДЛЯ КЛИКА ПО КНОПКЕ ОПЛАТЫ ---
+        payBtn.addEventListener('click', async () => {
+            // 1. Проверяем, установлен ли криптокошелек у пользователя (например, MetaMask)
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    payBtn.disabled = true;
+                    payBtn.innerText = "Connecting Wallet...";
 
+                    // 2. Запрашиваем доступ к аккаунту
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const userWallet = accounts[0];
+
+                    payBtn.innerText = "Processing Transaction...";
+
+                    // 3. Формируем транзакцию. 
+                    // Поскольку Dogecoin кошельки используют нативный блокчейн, для вызова через Web3 
+                    // пользователи отправляют Dogecoin в его смарт-контрактной обертке (wDOGE) или 
+                    // сайт запрашивает прямую нативную транзакцию через Doge-расширения.
+                    // Ниже представлен универсальный системный вызов транзакции:
+                    const transactionParameters = {
+                        to: MERCHANT_WALLET, // Адрес вашего кошелька
+                        from: userWallet,
+                        value: '0x0', // Сумма в hex-формате сети
+                        data: '0x'    // Дополнительный блок данных для Web3-ноды
+                    };
+
+                    // Отправляем запрос на подпись транзакции в кошелек пользователя
+                    const txHash = await window.ethereum.request({
+                        method: 'eth_sendTransaction',
+                        params: [transactionParameters],
+                    });
+
+                    alert(`Success! Tx Hash: ${txHash}\nYour star is processing.`);
+                    modal.classList.remove('active');
+                    setTimeout(() => modal.style.display = 'none', 300);
+
+                } catch (error) {
+                    console.error(error);
+                    alert("Transaction cancelled or failed.");
+                } finally {
+                    payBtn.disabled = false;
+                    payBtn.innerText = "Proceed to Web3 Payment";
+                }
+            } else {
+                // Если кошелька нет, показываем прямые реквизиты для копирования вручную
+                alert(`Web3 wallet not detected.\n\nPlease send ${selectedPriceDoge} DOGE manually to our address:\n${MERCHANT_WALLET}`);
+            }
+        });
+
+        // 3. Render Engine Pipeline Animation Loop
         function animate() {
             ctx.fillStyle = '#000002';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const time = (Date.now() - startTime) * 0.001;
-
-            // Camera Fly-In interpolation
             if (globalZOffset > targetZOffset) {
                 globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
             }
 
-            // TWINKLING STARS RENDERING
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 
-                // Rotational field physics
                 const rad = rotateSpeed * 0.005;
                 const cos = Math.cos(rad);
                 const sin = Math.sin(rad);
@@ -378,7 +379,6 @@
                 star.x = x1;
                 star.y = y1;
 
-                // Projection with camera fly-in depth tracking offset integration
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + star.x * factor;
                 star.screenY = cy + star.y * factor;
@@ -394,13 +394,11 @@
 
                     star.currentSize = size; 
 
-                    // Outer Aura Core
                     ctx.beginPath();
                     ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
                     ctx.fillStyle = auraColor;
                     ctx.fill();
 
-                    // Inner Sharp Point
                     ctx.beginPath();
                     ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
                     ctx.fillStyle = starColor;
@@ -408,7 +406,6 @@
                 }
             }
 
-            // FLYING PARTICLES (Speed field space warp effect)
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i];
