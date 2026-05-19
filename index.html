@@ -287,6 +287,7 @@
         let targetYOffset = 0;
         let currentXOffset = 0;
         let currentYOffset = 0;
+        let focusedStarHovered = false;
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -434,6 +435,22 @@
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             let foundStar = null;
+            focusedStarHovered = false;
+
+if (focusedStarIndex !== null) {
+
+    const focusedStar = stars[focusedStarIndex];
+
+    const dxFocus = mouseX - focusedStar.screenX;
+    const dyFocus = mouseY - focusedStar.screenY;
+
+    const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
+
+    if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
+        focusedStarHovered = true;
+        canvas.style.cursor = 'pointer';
+    }
+}
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
@@ -458,6 +475,9 @@
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                     <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
                 `;
+                if (!focusedStarHovered) {
+    canvas.style.cursor = 'crosshair';
+}
             } else { 
                 if (focusedStarIndex === null) {
                     hoveredStar = null; 
@@ -590,6 +610,10 @@
                     }
 
                     star.currentSize = size;
+                    if (focusedStarIndex === i && focusedStarHovered) {
+    const hoverPulse = 2.4 + Math.sin(time * 10) * 0.3;
+size *= hoverPulse;
+}
 
                     // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
                     if (focusedStarIndex === i) {
@@ -600,6 +624,9 @@
                         ctx.stroke();
                     }
 
+                    if (focusedStarIndex === i && focusedStarHovered) {
+    auraColor = `rgba(255, 215, 0, 0.9)`;
+}
                     ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
                     ctx.fillStyle = auraColor; ctx.fill();
                     ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
