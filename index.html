@@ -50,44 +50,6 @@
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
         }
 
-        /* NEW: Search Bar Panel Styling */
-        .search-container {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 15;
-            display: flex;
-            gap: 10px;
-            background: rgba(5, 5, 15, 0.6);
-            padding: 8px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 215, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
-        .search-input {
-            background: transparent;
-            border: none;
-            outline: none;
-            color: #fff;
-            padding: 5px 15px;
-            font-size: 13px;
-            width: 140px;
-        }
-        .search-btn {
-            background: #ffd700;
-            border: none;
-            color: #000;
-            padding: 6px 15px;
-            border-radius: 15px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .search-btn:hover {
-            background: #fff;
-        }
-
         /* Hover Tooltip Card */
         #star-tooltip {
             position: absolute;
@@ -211,12 +173,6 @@
 </head>
 <body>
 
-    <!-- NEW: Search Input Interface Structure -->
-    <div class="search-container">
-        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-4999)" min="0" max="4999">
-        <button id="search-btn" class="search-btn">SEARCH</button>
-    </div>
-
     <canvas id="starfield"></canvas>
     
     <div class="controls-container">
@@ -227,7 +183,7 @@
 
     <div id="payment-modal">
         <span class="modal-close" id="modal-close">&times;</span>
-        <h3 id="modal-title" style="color: #ffd700; margin-top: 0; margin-bottom: 5px;">Claim This Star</h3>
+        <h3 style="color: #ffd700; margin-top: 0; margin-bottom: 5px;">Claim This Star</h3>
         <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">Immortalize your name on the galaxy map via DOGE.</p>
         
         <div class="tier-box selected" data-tier="basic" data-price="7">
@@ -271,22 +227,11 @@
         const tierBoxes = document.querySelectorAll('.tier-box');
         const ownerInput = document.getElementById('star-owner');
         const msgInput = document.getElementById('star-msg');
-        
-        // Search selectors
-        const searchInput = document.getElementById('search-input');
-        const searchBtn = document.getElementById('search-btn');
 
         const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
         let selectedTier = "basic";
         let selectedPriceDoge = 7;
         let activeClickedStarNumber = null;
-        
-        // Target focus index for camera mechanics tracking
-        let focusedStarIndex = null;
-        let targetXOffset = 0;
-        let targetYOffset = 0;
-        let currentXOffset = 0;
-        let currentYOffset = 0;
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -298,10 +243,9 @@
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
-        // 1. Инициализация звезд
+        // 1. Core Stars Array (5000 Stars)
         const numStars = 5000;
         const stars = [];
-        const rotateSpeed = 0.3;
 
         for (let i = 0; i < numStars; i++) {
             stars.push({
@@ -343,7 +287,7 @@
         }
         loadPurchasedStars();
 
-        // 2. Частицы
+        // 2. Cosmic Particles Array
         const numParticles = 100;
         const particles = [];
         const flySpeed = 5;
@@ -372,7 +316,7 @@
             } else { isPlaying = false; audioBtn.innerText = "ENABLE AMBIENT"; }
         });
 
-        // --- INTERACTIVITY HOVER & CLICK & SEARCH ---
+        // --- INTERACTIVITY HOVER & CLICK ---
         let hoveredStar = null;
         let globalZOffset = 5000; const targetZOffset = 0; const flyInSpeed = 0.02;
 
@@ -383,50 +327,6 @@
                 selectedTier = box.getAttribute('data-tier');
                 selectedPriceDoge = parseFloat(box.getAttribute('data-price'));
             });
-        });
-
-        // NEW: Search engine button handler mechanics
-        searchBtn.addEventListener('click', () => {
-            const idVal = parseInt(searchInput.value);
-            if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
-                alert("Please enter a valid Star ID from 0 to 4999.");
-                return;
-            }
-
-            const targetStar = stars[idVal];
-            
-            // Смещаем камеру, центрируя галактику на этой звезде
-            focusedStarIndex = idVal;
-            targetXOffset = -targetStar.x;
-            targetYOffset = -targetStar.y;
-
-            if (targetStar.isBought) {
-                // Если звезда куплена, принудительно открываем тултип по центру
-                setTimeout(() => {
-                    tooltip.style.display = 'block';
-                    tooltip.style.left = `${cx + 20}px`;
-                    tooltip.style.top = `${cy - 20}px`;
-                    tooltip.className = targetStar.tier;
-                    
-                    let label = targetStar.tier === 'supernova' ? '⚡ Supernova Core' : (targetStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
-                    tooltip.innerHTML = `
-                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND STAR #${idVal}</div>
-                        <div class="tooltip-type" style="margin-top:5px;">${label}</div>
-                        <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
-                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
-                        <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
-                    `;
-                }, 400);
-            } else {
-                // Если свободна — убираем тултип и предлагаем купить её
-                tooltip.style.display = 'none';
-                if (confirm(`Star #${idVal} is FREE! Would you like to buy it right now?`)) {
-                    activeClickedStarNumber = idVal;
-                    document.getElementById('modal-title').innerText = `Claim Star #${idVal}`;
-                    modal.style.display = 'block';
-                    setTimeout(() => modal.classList.add('active'), 10);
-                }
-            }
         });
 
         canvas.addEventListener('mousemove', (e) => {
@@ -444,7 +344,6 @@
             }
 
             if (foundStar) {
-                focusedStarIndex = null; // Отменяем фокус поиска, если пользователь водит мышкой
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
                 tooltip.style.left = `${e.clientX + 15}px`;
@@ -458,18 +357,11 @@
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                     <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
                 `;
-            } else { 
-                if (focusedStarIndex === null) {
-                    hoveredStar = null; 
-                    tooltip.style.display = 'none'; 
-                }
-            }
+            } else { hoveredStar = null; tooltip.style.display = 'none'; }
         });
 
         canvas.addEventListener('click', (e) => {
             if (hoveredStar) return;
-            focusedStarIndex = null;
-            tooltip.style.display = 'none';
 
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
@@ -486,7 +378,6 @@
             }
 
             activeClickedStarNumber = closestStarIdx;
-            document.getElementById('modal-title').innerText = `Claim Star #${closestStarIdx}`;
             modal.style.display = 'block';
             setTimeout(() => modal.classList.add('active'), 10);
         });
@@ -496,7 +387,6 @@
             setTimeout(() => modal.style.display = 'none', 300);
         });
 
-        // ОТПРАВКА ДАННЫХ В SUPABASE
         payBtn.addEventListener('click', async () => {
             const userNameVal = ownerInput.value.trim() || "Anonymous";
             const msgVal = msgInput.value.trim() || "To the moon! 🚀";
@@ -508,23 +398,39 @@
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    if (accounts && accounts[0]) { userWalletAddress = accounts[0]; }
+                    if (accounts && accounts[0]) {
+                        userWalletAddress = accounts[0];
+                    }
                     await window.ethereum.request({
                         method: 'eth_sendTransaction',
                         params: [{ to: MERCHANT_WALLET, from: accounts, value: '0x0' }],
                     });
-                } catch (e) { console.log("Wallet link bypassed."); }
+                } catch (e) {
+                    console.log("Wallet payment simulation active.");
+                }
             }
 
             payBtn.innerText = "Saving to Space Grid...";
 
             try {
                 if (supabase) {
-                    await supabase.from('purchased_stars').insert([
-                        { star_number: activeClickedStarNumber, user_name: userNameVal, wallet_address: userWalletAddress, tier: selectedTier, message: msgVal }
-                    ]);
+                    const { error } = await supabase
+                        .from('purchased_stars')
+                        .insert([
+                            { 
+                                star_number: activeClickedStarNumber, 
+                                user_name: userNameVal, 
+                                wallet_address: userWalletAddress,
+                                tier: selectedTier,
+                                message: msgVal
+                            }
+                        ]);
+
+                    if (error) throw error;
                 }
-            } catch (err) { console.error("Database sync issue:", err.message); }
+            } catch (err) {
+                console.error("Database sync issue:", err.message);
+            }
 
             stars[activeClickedStarNumber].isBought = true;
             stars[activeClickedStarNumber].user_name = userNameVal;
@@ -532,16 +438,17 @@
             stars[activeClickedStarNumber].tier = selectedTier;
             stars[activeClickedStarNumber].message = msgVal;
 
-            alert(`Success! Star #${activeClickedStarNumber} is registered.`);
+            alert("Success! Your star registration data is submitted.");
             
-            ownerInput.value = ""; msgInput.value = "";
+            ownerInput.value = "";
+            msgInput.value = "";
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
             payBtn.disabled = false;
             payBtn.innerText = "Proceed to Web3 Payment";
         });
 
-        // 3. Render Pipeline Loop
+        // 3. Render Pipeline Loop (УБРАНО СМЕЩЕНИЕ КООРДИНАТ ДЛЯ ВРАЩЕНИЯ)
         let startTime = Date.now();
         function animate() {
             ctx.fillStyle = '#000002'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -549,28 +456,13 @@
 
             if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
 
-            // Плавная интерполяция смещения камеры к выбранной звезде
-            if (focusedStarIndex !== null) {
-                currentXOffset += (targetXOffset - currentXOffset) * 0.08;
-                currentYOffset += (targetYOffset - currentYOffset) * 0.08;
-            } else {
-                // Если фокуса поиска нет, камера медленно возвращается в центр
-                currentXOffset += (0 - currentXOffset) * 0.02;
-                currentYOffset += (0 - currentYOffset) * 0.02;
-            }
-
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 
-                // Вращение галактики вокруг центра масс с учетом текущего смещения камеры
-                const rad = rotateSpeed * 0.005; const cos = Math.cos(rad); const sin = Math.sin(rad);
-                const x1 = star.x * cos - star.y * sin; const y1 = star.y * cos + star.x * sin;
-                star.x = x1; star.y = y1;
+                // Физика вращения звезд (Удалена, теперь координаты x и y остаются на месте)
 
-                // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции
                 const factor = 800 / (star.z + globalZOffset + 1);
-                star.screenX = cx + (star.x + currentXOffset) * factor; 
-                star.screenY = cy + (star.y + currentYOffset) * factor;
+                star.screenX = cx + star.x * factor; star.screenY = cy + star.y * factor;
 
                 if (star.screenX >= 0 && star.screenX <= canvas.width && star.screenY >= 0 && star.screenY <= canvas.height) {
                     star.phase += star.flickerSpeed;
@@ -593,15 +485,6 @@
 
                     star.currentSize = size;
 
-                    // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
-                    if (focusedStarIndex === i) {
-                        ctx.beginPath();
-                        ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
-                        ctx.strokeStyle = '#ffd700';
-                        ctx.lineWidth = 1.5;
-                        ctx.stroke();
-                    }
-
                     ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
                     ctx.fillStyle = auraColor; ctx.fill();
                     ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
@@ -609,7 +492,6 @@
                 }
             }
 
-            // Летящие частицы
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i]; p.z -= flySpeed;
