@@ -213,7 +213,7 @@
 
     <!-- NEW: Search Input Interface Structure -->
     <div class="search-container">
-        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-4999)" min="0" max="4999">
+        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-2000000)" min="0" max="2000000">
         <button id="search-btn" class="search-btn">SEARCH</button>
     </div>
 
@@ -299,17 +299,20 @@
         let cy = canvas.height / 2;
 
         // 1. Инициализация звезд
-        const numStars = 5000;
+        const numStars = 2000000;
         const stars = [];
         const rotateSpeed = 0.3;
+        const RENDER_WINDOW = 6000;
+        let currentChunk = 0;
 
         for (let i = 0; i < numStars; i++) {
             stars.push({
-                x: (Math.random() - 0.5) * 3000,
-                y: (Math.random() - 0.5) * 3000,
-                z: Math.random() * 3000,
-                phase: Math.random() * Math.PI * 2,
-                flickerSpeed: 0.02 + Math.random() * 0.05,
+        x: (Math.random() - 0.5) * 3000,
+        y: (Math.random() - 0.5) * 3000,
+        z: Math.random() * 3000,
+
+                phase: Math.random() * 6.28,
+                flickerSpeed: 0.02 + Math.random() * 0.03,
                 isBought: false,
                 tier: 'basic',
                 user_name: '',
@@ -435,7 +438,10 @@
             const mouseY = e.clientY - rect.top;
             let foundStar = null;
 
-            for (let i = 0; i < numStars; i++) {
+            const startIndex = currentChunk * RENDER_WINDOW;
+            const endIndex = Math.min(startIndex + RENDER_WINDOW, numStars);
+
+         for (let i = startIndex; i < endIndex; i += 3) {
                 const star = stars[i];
                 if (!star.isBought) continue;
                 const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
@@ -477,7 +483,10 @@
             let closestStarIdx = 0;
             let minDist = Infinity;
 
-            for (let i = 0; i < numStars; i++) {
+            const startIndex = currentChunk * RENDER_WINDOW;
+            const endIndex = Math.min(startIndex + RENDER_WINDOW, numStars);
+
+            for (let i = startIndex; i < endIndex; i += 2) {
                 if (stars[i].isBought) continue;
                 const dx = mouseX - stars[i].screenX;
                 const dy = mouseY - stars[i].screenY;
@@ -550,25 +559,40 @@
             if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
 
             // Плавная интерполяция смещения камеры к выбранной звезде
-            if (focusedStarIndex !== null) {
-                currentXOffset += (targetXOffset - currentXOffset) * 0.08;
-                currentYOffset += (targetYOffset - currentYOffset) * 0.08;
-            } else {
-                // Если фокуса поиска нет, камера медленно возвращается в центр
-                currentXOffset += (0 - currentXOffset) * 0.02;
-                currentYOffset += (0 - currentYOffset) * 0.02;
-            }
+if (focusedStarIndex !== null) {
+    currentXOffset += (targetXOffset - currentXOffset) * 0.08;
+    currentYOffset += (targetYOffset - currentYOffset) * 0.08;
+} else {
+    // Если фокуса поиска нет, камера медленно возвращается в центр
+    currentXOffset += (0 - currentXOffset) * 0.02;
+    currentYOffset += (0 - currentYOffset) * 0.02;
+}
 
-            for (let i = 0; i < numStars; i++) {
-                const star = stars[i];
-                
-               // STATIC STARS
-               // вращение отключено — звезды остаются неподвижными
+// RENDER ONLY CURRENT CHUNK
+const startIndex = currentChunk * RENDER_WINDOW;
+const endIndex = Math.min(startIndex + RENDER_WINDOW, numStars);
 
-                // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции
+for (let i = startIndex; i < endIndex; i++) {
+
+    const star = stars[i];
+    
+    // STATIC STARS
+    // вращение отключено — звезды остаются неподвижными
+
+    // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции
                 const factor = 800 / (star.z + globalZOffset + 1);
-                star.screenX = cx + (star.x + currentXOffset) * factor; 
-                star.screenY = cy + (star.y + currentYOffset) * factor;
+                const sx = cx + (star.x + currentXOffset) * factor;
+const sy = cy + (star.y + currentYOffset) * factor;
+
+if (
+    sx < -50 ||
+    sx > canvas.width + 50 ||
+    sy < -50 ||
+    sy > canvas.height + 50
+) continue;
+
+star.screenX = sx;
+star.screenY = sy;
 
                 if (star.screenX >= 0 && star.screenX <= canvas.width && star.screenY >= 0 && star.screenY <= canvas.height) {
                     star.phase += star.flickerSpeed;
@@ -600,8 +624,12 @@
                         ctx.stroke();
                     }
 
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
-                    ctx.fillStyle = auraColor; ctx.fill();
+                    if (star.isBought) {
+    ctx.beginPath();
+    ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
+    ctx.fillStyle = auraColor;
+    ctx.fill();
+}
                     ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
                     ctx.fillStyle = starColor; ctx.fill();
                 }
@@ -622,6 +650,11 @@
                     }
                 }
             }
+            currentChunk++;
+
+if (currentChunk * RENDER_WINDOW >= numStars) {
+    currentChunk = 0;
+}
             requestAnimationFrame(animate);
         }
         animate();
