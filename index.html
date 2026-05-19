@@ -213,7 +213,7 @@
 
     <!-- NEW: Search Input Interface Structure -->
     <div class="search-container">
-        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-4999)" min="0" max="4999">
+        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="4999">
         <button id="search-btn" class="search-btn">SEARCH</button>
     </div>
 
@@ -391,7 +391,7 @@
         searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
-                alert("Please enter a valid Star ID from 0 to 4999.");
+                alert("Please enter a valid Star ID from 0 to 1999999.");
                 return;
             }
 
