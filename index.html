@@ -8,7 +8,8 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #020208; /* Глубокий космический цвет */
+            background-color: #020208;
+            font-family: sans-serif;
         }
         canvas {
             display: block;
@@ -16,18 +17,48 @@
             top: 0;
             left: 0;
         }
+        /* Кнопка управления музыкой */
+        #audio-btn {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            border-radius: 30px;
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 14px;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+        #audio-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
     </style>
 </head>
 <body>
 
-    <!-- Используем стандартный HTML5 холст, который работает везде -->
     <canvas id="starfield"></canvas>
+    <button id="audio-btn">ВКЛЮЧИТЬ ЭМБИЕНТ</button>
+
+    <!-- Аудио-элемент с расслабляющей космической музыкой -->
+    <audio id="ambient-audio" loop>
+        <source src="https://google.com" type="audio/ogg">
+        <source src="https://soundhelix.com" type="audio/mp3">
+    </audio>
 
     <script>
         const canvas = document.getElementById('starfield');
         const ctx = canvas.getContext('2d');
+        const audio = document.getElementById('ambient-audio');
+        const audioBtn = document.getElementById('audio-btn');
 
-        // Настройка размеров экрана
+        // Настройка размеров
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -35,12 +66,6 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Параметры системы
-        const numStars = 5000;
-        const stars = [];
-        const speed = 0.5; // Скорость вращения неба
-
-        // Центр экрана (вокруг него будет вращение)
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
@@ -49,65 +74,129 @@
             cy = canvas.height / 2;
         });
 
-        // 1. Инициализация 5000 звезд с 3D-координатами
+        // 1. Настройка базовых звезд (5000 штук из прошлого шага)
+        const numStars = 5000;
+        const stars = [];
+        const rotateSpeed = 0.5;
+
         for (let i = 0; i < numStars; i++) {
             stars.push({
-                x: (Math.random() - 0.5) * 3000, // Глубина X
-                y: (Math.random() - 0.5) * 3000, // Глубина Y
-                z: Math.random() * 3000,         // Дистанция Z (расстояние до экрана)
-                phase: Math.random() * Math.PI * 2, // Индивидуальная фаза мерцания
-                flickerSpeed: 0.02 + Math.random() * 0.05 // Скорость мерцания
+                x: (Math.random() - 0.5) * 3000,
+                y: (Math.random() - 0.5) * 3000,
+                z: Math.random() * 3000,
+                phase: Math.random() * Math.PI * 2,
+                flickerSpeed: 0.02 + Math.random() * 0.05
             });
         }
 
-        // 2. Главный цикл анимации
+        // 2. Добавляем летающие космические частицы (100 штук)
+        const numParticles = 100;
+        const particles = [];
+        const flySpeed = 4; // Скорость полета частиц на зрителя
+
+        for (let i = 0; i < numParticles; i++) {
+            particles.push({
+                x: (Math.random() - 0.5) * 2000,
+                y: (Math.random() - 0.5) * 2000,
+                z: Math.random() * 2000 // Начальное расстояние по глубине
+            });
+        }
+
+        // Логика кнопки включения/выключения звука
+        audioBtn.addEventListener('click', () => {
+            if (audio.paused) {
+                audio.play();
+                audioBtn.innerText = "ВЫКЛЮЧИТЬ ЗВУК";
+                audioBtn.style.borderColor = "rgba(255, 100, 100, 0.5)";
+                audioBtn.style.color = "#ff6464";
+            } else {
+                audio.pause();
+                audioBtn.innerText = "ВКЛЮЧИТЬ ЭМБИЕНТ";
+                audioBtn.style.borderColor = "rgba(255, 215, 0, 0.5)";
+                audioBtn.style.color = "#ffd700";
+            }
+        });
+
+        // 3. Главный цикл анимации
         function animate() {
-            // Очищаем экран черным цветом на каждом кадре
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Отрисовка каждой звезды
+            // --- ОТРИСОВКА МЕРЦАЮЩИХ ЗВЕЗД ---
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
 
-                // Имитация 3D вращения звезд вокруг центра
-                // Математически смещаем X и Y по тригонометрическому кругу
-                const rad = speed * 0.005;
+                // Вращение звезд
+                const rad = rotateSpeed * 0.005;
                 const cos = Math.cos(rad);
                 const sin = Math.sin(rad);
-                
                 const x1 = star.x * cos - star.y * sin;
                 const y1 = star.y * cos + star.x * sin;
                 star.x = x1;
                 star.y = y1;
 
-                // Перевод 3D координат в 2D пиксели на экране (Перспектива)
-                // Чем ближе звезда (меньше Z), тем сильнее она разлетается к краям
                 const factor = 800 / (star.z + 1);
                 const screenX = cx + star.x * factor;
                 const screenY = cy + star.y * factor;
 
-                // Проверяем, попадает ли звезда в видимую область экрана
                 if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
-                    
-                    // Рассчитываем мерцание через синусоиду
                     star.phase += star.flickerSpeed;
-                    const brightness = 0.4 + Math.sin(star.phase) * 0.6; // Значение от 0.0 до 1.0
-
-                    // Базовый размер зависит от удаленности (Z-индекса)
+                    const brightness = 0.4 + Math.sin(star.phase) * 0.6;
                     const baseSize = (1 - star.z / 3000) * 2.5;
                     const size = Math.max(0.5, baseSize * (0.7 + brightness * 0.3));
 
-                    // Рисуем мягкое желтое свечение вокруг звезды
                     ctx.beginPath();
                     ctx.arc(screenX, screenY, size * 2.5, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 215, 0, ${brightness * 0.15})`; // Полупрозрачный ореол
+                    ctx.fillStyle = `rgba(255, 215, 0, ${brightness * 0.15})`;
                     ctx.fill();
 
-                    // Рисуем яркое желтое ядро звезды
                     ctx.beginPath();
                     ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 235, 120, ${brightness})`; // Яркий центр
+                    ctx.fillStyle = `rgba(255, 235, 120, ${brightness})`;
+                    ctx.fill();
+                }
+            }
+
+            // --- ОТРИСОВКА ЛЕТАЮЩИХ КОСМИЧЕСКИХ ЧАСТИЦ ---
+            for (let i = 0; i < numParticles; i++) {
+                const p = particles[i];
+
+                // Приближаем частицу к экрану (уменьшаем её Z)
+                p.z -= flySpeed;
+
+                // Если частица пролетела мимо экрана или слишком близко, сбрасываем её назад вглубь
+                if (p.z <= 0) {
+                    p.z = 2000;
+                    p.x = (Math.random() - 0.5) * 2000;
+                    p.y = (Math.random() - 0.5) * 2000;
+                }
+
+                // Проекция 3D в 2D для летящих частиц
+                const pFactor = 800 / (p.z + 1);
+                const pScreenX = cx + p.x * pFactor;
+                const pScreenY = cy + p.y * pFactor;
+
+                if (pScreenX >= 0 && pScreenX <= canvas.width && pScreenY >= 0 && pScreenY <= canvas.height) {
+                    // Чем ближе частица, тем она крупнее и ярче
+                    const pSize = (1 - p.z / 2000) * 5; 
+                    const alpha = (1 - p.z / 2000) * 0.7;
+
+                    // Рисуем продолговатый след (эффект скорости полета)
+                    ctx.beginPath();
+                    ctx.moveTo(pScreenX, pScreenY);
+                    // Линия направлена от центра к краям
+                    const tailX = cx + p.x * (800 / (p.z + flySpeed * 3 + 1));
+                    const tailY = cy + p.y * (800 / (p.z + flySpeed * 3 + 1));
+                    ctx.lineTo(tailX, tailY);
+                    
+                    ctx.strokeStyle = `rgba(255, 230, 150, ${alpha})`;
+                    ctx.lineWidth = pSize * 0.4;
+                    ctx.stroke();
+
+                    // Само ядро летящей частицы
+                    ctx.beginPath();
+                    ctx.arc(pScreenX, pScreenY, pSize, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 210, ${alpha + 0.3})`;
                     ctx.fill();
                 }
             }
@@ -115,7 +204,6 @@
             requestAnimationFrame(animate);
         }
 
-        // Запуск
         animate();
     </script>
 </body>
