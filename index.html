@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Бесконечная Галактика</title>
+    <title>3D Автоматическая Галактика</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow-x: hidden;
+            overflow: hidden;
             background-color: #000;
         }
         canvas {
@@ -19,74 +19,43 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            z-index: 1;
-            pointer-events: none;
-        }
-        .content {
-            position: relative;
-            z-index: 2;
-            color: white;
-            font-family: sans-serif;
-        }
-        .screen {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 2rem;
-            text-shadow: 0 0 10px rgba(255,255,255,0.5);
-            border-bottom: 1px dashed rgba(255,255,255,0.1);
         }
     </style>
-    <!-- Подключаем Three.js -->
     <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
     <canvas id="galaxy"></canvas>
 
-    <!-- Вы можете добавлять или удалять экраны. Код сам создаст под них звезды -->
-    <div class="content">
-        <div class="screen">Экран 1: Центр Галактики</div>
-        <div class="screen">Экран 2: Рукав Ориона</div>
-        <div class="screen">Экран 3: Звездное скопление</div>
-        <div class="screen">Экран 4: Край вселенной</div>
-    </div>
-
     <script>
         // --- НАСТРОЙКИ ---
-        const STARS_PER_SCREEN = 10000; // Количество звезд на один экран
+        const TOTAL_SECTIONS = 6;       // Количество виртуальных секторов (экранов) глубины
+        const STARS_PER_SECTION = 10000;// Количество звезд на один сектор
         const STAR_SIZE = 0.15;          // Базовый размер звезд
+        const FLIGHT_SPEED = 1.5;       // Скорость автоматического полета вперед
 
         // --- ИНИЦИАЛИЗАЦИЯ СЦЕНЫ ---
         const canvas = document.getElementById('galaxy');
         const scene = new THREE.Scene();
         
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5;
+        // Стартовая позиция камеры
+        camera.position.z = 5; 
 
         const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-        // --- СОЗДАНИЕ БЕСКОНЕЧНОЙ ГАЛАКТИКИ ---
-        const screens = document.querySelectorAll('.screen');
-        const totalScreens = screens.length;
-        const totalStars = STARS_PER_SCREEN * totalScreens;
-
-        // Геометрия одной звезды (сфера)
+        // --- СОЗДАНИЕ ГАЛАКТИКИ ---
+        const totalStars = STARS_PER_SECTION * TOTAL_SECTIONS;
         const starGeometry = new THREE.SphereGeometry(STAR_SIZE, 4, 4);
-
-        // Кастомный материал для эффекта мерцания через шейдеры (работает очень быстро)
         const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
         
-        // Магия мерцания: модифицируем стандартный материал Three.js
+        // Шейдер мерцания и свечения
         starMaterial.onBeforeCompile = (shader) => {
             shader.uniforms.uTime = { value: 0 };
             starMaterial.userData.shader = shader;
 
-            // Добавляем переменные для передачи случайной фазы мерцания
             shader.vertexShader = `
                 attribute float aPhase;
                 varying float vPhase;
@@ -97,99 +66,149 @@
                  vPhase = aPhase;`
             );
 
-            // Формула мерцания в пиксельном шейдере
             shader.fragmentShader = `
                 uniform float uTime;
                 varying float vPhase;
                 ${shader.fragmentShader}
             `.replace(
                 `vec4 diffuseColor = vec4( diffuse, opacity );`,
-                `// Создаем синусоиду мерцания на основе времени и личной фазы звезды
-                 float blink = 0.3 + 0.7 * sin(uTime * 3.0 + vPhase * 60.0);
+                `float isYellow = step(0.1, vColor.g - vColor.b);
+                 float blink = mix(0.3 + 0.7 * sin(uTime * 4.0 + vPhase * 60.0), 2.5, isYellow);
                  vec4 diffuseColor = vec4( diffuse * blink, opacity );`
             );
         };
 
-        // Создаем InstancedMesh — один объект, который отрисует ВСЕ тысячи звезд разом
         const starMesh = new THREE.InstancedMesh(starGeometry, starMaterial, totalStars);
         
-        // Добавляем массив фаз для мерцания
+        // Цвета по умолчанию
+        const colors = new Float32Array(totalStars * 3);
+        const defaultColor = new THREE.Color(0xffffff);
+        for(let i = 0; i < totalStars; i++) {
+            defaultColor.toArray(colors, i * 3);
+        }
+        starMesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+
         const phases = new Float32Array(totalStars);
         const dummy = new THREE.Object3D();
+        const initialPositions = [];
 
-        let starIndex = 0;
+        // Распределяем звезды по секторам глубины
+        const sectionDepth = 15; // Расстояние между секторами
+        for (let s = 0; s < TOTAL_SECTIONS; s++) {
+            const zOffset = -s * sectionDepth; 
 
-        // Распределяем звезды по виртуальным экранам в глубину сцены
-        for (let s = 0; s < totalScreens; s++) {
-            // Смещение экрана по оси Z (каждый экран находится дальше предыдущего)
-            const zOffset = -s * 10; 
-
-            for (let i = 0; i < STARS_PER_SCREEN; i++) {
-                // Случайные координаты в пределах видимости одного экрана
-                const x = (Math.random() - 0.5) * 15;
-                const y = (Math.random() - 0.5) * 10;
-                // Небольшой разброс по глубине внутри самого экрана
-                const z = zOffset + (Math.random() - 0.5) * 8; 
+            for (let i = 0; i < STARS_PER_SECTION; i++) {
+                const x = (Math.random() - 0.5) * 25; // Слегка расширили по сторонам
+                const y = (Math.random() - 0.5) * 15;
+                const z = zOffset + (Math.random() - 0.5) * sectionDepth; 
 
                 dummy.position.set(x, y, z);
+                dummy.scale.set(1, 1, 1);
                 dummy.updateMatrix();
                 
-                // Записываем позицию в общую матрицу
-                starMesh.setMatrixAt(starIndex, dummy.matrix);
+                starMesh.setMatrixAt(starIndex = s * STARS_PER_SCREEN = i + (s * STARS_PER_SECTION), dummy.matrix);
+                initialPositions.push(new THREE.Vector3(x, y, z));
                 
-                // Случайная фаза для уникального ритма мерцания каждой звезды
-                phases[starIndex] = Math.random();
-                
-                starIndex++;
+                phases[initialPositions.length - 1] = Math.random();
             }
         }
 
-        // Передаем фазы в геометрию
         starGeometry.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phases, 1));
         scene.add(starMesh);
 
-        // --- ИНТЕГРАЦИЯ С СКРОЛЛОМ ---
-        let targetScrollY = 0;
-        let currentScrollY = 0;
+        // --- ИНТЕРАКТИВ (RAYCASTING) ---
+        const raycaster = new THREE.Raycaster();
+        raycaster.params.Points.threshold = 0.5; 
+        const mouse = new THREE.Vector2(-100, -100);
+        let hoveredInstanceId = null;
 
-        window.addEventListener('scroll', () => {
-            targetScrollY = window.scrollY;
+        window.addEventListener('mousemove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.set(-100, -100);
+        });
+
+        function updateHover() {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(starMesh);
+
+            if (intersects.length > 0) {
+                const instanceId = intersects.instanceId;
+                if (hoveredInstanceId !== instanceId) {
+                    if (hoveredInstanceId !== null) resetStar(hoveredInstanceId);
+                    hoveredInstanceId = instanceId;
+                    highlightStar(instanceId);
+                }
+            } else {
+                if (hoveredInstanceId !== null) {
+                    resetStar(hoveredInstanceId);
+                    hoveredInstanceId = null;
+                }
+            }
+        }
+
+        function highlightStar(id) {
+            dummy.position.copy(initialPositions[id]);
+            dummy.scale.set(10, 10, 10);
+            dummy.updateMatrix();
+            starMesh.setMatrixAt(id, dummy.matrix);
+
+            const yellow = new THREE.Color(0xffd700);
+            starMesh.setInstanceColorAt(id, yellow);
+            
+            starMesh.instanceMatrix.needsUpdate = true;
+            starMesh.instanceColor.needsUpdate = true;
+        }
+
+        function resetStar(id) {
+            dummy.position.copy(initialPositions[id]);
+            dummy.scale.set(1, 1, 1);
+            dummy.updateMatrix();
+            starMesh.setMatrixAt(id, dummy.matrix);
+
+            const white = new THREE.Color(0xffffff);
+            starMesh.setInstanceColorAt(id, white);
+
+            starMesh.instanceMatrix.needsUpdate = true;
+            starMesh.instanceColor.needsUpdate = true;
+        }
 
         // --- АНИМАЦИЯ ---
         const clock = new THREE.Clock();
+        const totalDepth = TOTAL_SECTIONS * sectionDepth;
 
         function animate() {
             requestAnimationFrame(animate);
 
+            const delta = clock.getDelta();
             const time = clock.getElapsedTime();
             
-            // Обновляем время в шейдере для мерцания
             if (starMaterial.userData.shader) {
                 starMaterial.userData.shader.uniforms.uTime.value = time;
             }
 
-            // Плавное движение камеры при скролле (камера движется сквозь галактику вглубь)
-            currentScrollY += (targetScrollY - currentScrollY) * 0.05; // 0.05 — плавность доводки
-            
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            if (maxScroll > 0) {
-                const scrollPercent = currentScrollY / maxScroll;
-                // Камера перемещается по оси Z вслед за скроллом
-                camera.position.z = 5 - (scrollPercent * (totalScreens - 1) * 10);
+            // Автоматическое движение камеры вперед сквозь космос
+            camera.position.z -= FLIGHT_SPEED * delta;
+
+            // БЕСКОНЕЧНЫЙ ЦИКЛ: когда камера пролетает всю галактику, она плавно возвращается в начало
+            if (camera.position.z < -totalDepth + 5) {
+                camera.position.z = 5;
             }
 
+            updateHover();
             renderer.render(scene, camera);
         }
 
-        // --- АДАПТИВНОСТЬ ПОД ЭКРАНЫ ---
+        // --- АДАПТИВНОСТЬ ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Запуск
         animate();
     </script>
 </body>
