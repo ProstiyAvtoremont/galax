@@ -1,1 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Star Ownership Map</title>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+body {
+    margin:0;
+    overflow:hidden;
+    background:#000;
+    color:white;
+    font-family:Arial;
+}
+
+canvas { position:absolute; top:0; left:0; }
+
+#ui {
+    position:absolute;
+    top:20px;
+    left:20px;
+    z-index:10;
+    display:flex;
+    gap:10px;
+}
+
+input {
+    padding:10px;
+    border-radius:8px;
+    border:none;
+}
+
+button {
+    padding:10px 15px;
+    background:gold;
+    border:none;
+    cursor:pointer;
+    border-radius:8px;
+}
+
+/* modal */
+#modal {
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:#111;
+    padding:20px;
+    border:1px solid gold;
+    display:none;
+    width:320px;
+}
+.option {
+    padding:10px;
+    border:1px solid #333;
+    margin:8px 0;
+    cursor:pointer;
+}
+.option:hover { border-color:gold; }
+.highlight { color:gold; font-weight:bold; }
+
+</style>
+</head>
+<body>
+
+<div id="ui">
+    <input id="search" placeholder="Star ID (0 - 2M)" />
+    <button onclick="searchStar()">Search</button>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="modal">
+    <h3 id="title">Buy Star</h3>
+
+    <div class="option" onclick="selectTier('basic')">
+        ⭐ Basic — $1 DOGE<br/>
+        Name + short message
+    </div>
+
+    <div class="option" onclick="selectTier('supernova')">
+        ✨ Supernova — $3-$5 DOGE<br/>
+        Bigger glow + link + highlight
+    </div>
+
+    <div class="option" onclick="selectTier('constellation')">
+        🌌 Constellation — $20-$50 DOGE<br/>
+        Group stars / brand cluster
+    </div>
+
+    <button onclick="pay()">Pay with DOGE</button>
+</div>
+
+<script>
+/* =========================
+   CONFIG (SUPABASE LATER)
+========================= */
+let SUPABASE_URL = "";
+let SUPABASE_KEY = "";
+let supabase = null;
+
+/* ========================= */
+
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+}
+addEventListener("resize", resize);
+resize();
+
+/* =========================
+   STARS (VISIBLE ONLY 3000)
+========================= */
+
+const STAR_COUNT = 3000;
+const stars = [];
+
+for(let i=0;i<STAR_COUNT;i++){
+    stars.push({
+        x:(Math.random()-0.5)*3000,
+        y:(Math.random()-0.5)*3000,
+        z:Math.random()*2000,
+        phase:Math.random()*Math.PI*2
+    });
+}
+
+/* =========================
+   VIRTUAL STAR POSITION (2M SYSTEM)
+========================= */
+
+const MAX_ID = 2000000;
+
+function getStarPosition(id){
+    const seed = id * 99991;
+    return {
+        x: Math.sin(seed)*2000,
+        y: Math.cos(seed)*2000,
+        z: (Math.sin(seed*2)*1000)+1500
+    };
+}
+
+/* =========================
+   CAMERA
+========================= */
+
+let camX = 0;
+let camY = 0;
+let targetX = 0;
+let targetY = 0;
+
+function clamp(x){
+    return Math.max(-3000, Math.min(3000, x));
+}
+
+/* =========================
+   STATE
+========================= */
+
+let focusedId = null;
+let selectedTier = "basic";
+
+/* =========================
+   SEARCH
+========================= */
+
+function searchStar(){
+    const id = parseInt(document.getElementById("search").value);
+
+    if(isNaN(id) || id < 0 || id > MAX_ID){
+        alert("Invalid ID");
+        return;
+    }
+
+    const pos = getStarPosition(id);
+
+    focusedId = id;
+
+    targetX = clamp(-pos.x);
+    targetY = clamp(-pos.y);
+
+    // check if bought
+    if(false){
+        // placeholder for DB check
+    } else {
+        document.getElementById("modal").style.display = "block";
+        document.getElementById("title").innerText = "Buy Star #" + id;
+    }
+}
+
+/* =========================
+   TIER SELECT
+========================= */
+
+function selectTier(t){
+    selectedTier = t;
+}
+
+/* =========================
+   PAYMENT (DOGE PLACEHOLDER)
+========================= */
+
+function pay(){
+    alert("Payment sent to DOGE wallet (placeholder)");
+    document.getElementById("modal").style.display = "none";
+}
+
+/* =========================
+   ANIMATION LOOP
+========================= */
+
+function animate(){
+    ctx.fillStyle="black";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    camX += (targetX - camX)*0.05;
+    camY += (targetY - camY)*0.05;
+
+    // background stars
+    for(let s of stars){
+
+        s.phase += 0.02;
+
+        const brightness = 0.5 + Math.sin(s.phase)*0.5;
+
+        const factor = 800/(s.z+1);
+
+        const x = canvas.width/2 + (s.x + camX)*factor;
+        const y = canvas.height/2 + (s.y + camY)*factor;
+
+        ctx.fillStyle = `rgba(255,255,255,${brightness})`;
+        ctx.fillRect(x,y,2,2);
+    }
+
+    // focused star highlight
+    if(focusedId !== null){
+        const p = getStarPosition(focusedId);
+
+        const fx = canvas.width/2 + (p.x + camX)*1;
+        const fy = canvas.height/2 + (p.y + camY)*1;
+
+        ctx.beginPath();
+        ctx.arc(fx,fy,20,0,Math.PI*2);
+        ctx.strokeStyle="gold";
+        ctx.stroke();
+    }
+
+    requestAnimationFrame(animate);
+}
+
+animate();
+
+</script>
+</body>
+</html>
