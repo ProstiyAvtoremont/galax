@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
-    <!-- Подключаем стабильную версию Supabase -->
+    <!-- Подключаем стабильную библиотеку Supabase -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body {
@@ -69,11 +69,11 @@
         #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3); }
         #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3); }
         
-        .tooltip-title { font-weight: bold; font-size: 15px; margin-bottom: 4px; color: #ffd700; }
+        .tooltip-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #ffd700; }
         #star-tooltip.supernova .tooltip-title { color: #ff3366; }
         #star-tooltip.constellation .tooltip-title { color: #00ffff; }
         .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
-        .tooltip-meta { color: #aaa; font-size: 11px; margin-top: 5px; }
+        .tooltip-meta { color: #888; font-size: 10px; margin-top: 8px; word-break: break-all; }
 
         /* Neon Payment Modal */
         #payment-modal {
@@ -138,7 +138,7 @@
         .input-field {
             width: 100%;
             box-sizing: border-box;
-            padding: 10px;
+            padding: 11px;
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.2);
             border-radius: 8px;
@@ -184,7 +184,7 @@
     <div id="payment-modal">
         <span class="modal-close" id="modal-close">&times;</span>
         <h3 style="color: #ffd700; margin-top: 0; margin-bottom: 5px;">Claim This Star</h3>
-        <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">Fill details to write your name onto the starfield via DOGE.</p>
+        <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">Immortalize your name on the galaxy map via DOGE.</p>
         
         <div class="tier-box selected" data-tier="basic" data-price="7">
             <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star (~7 DOGE)</div>
@@ -201,7 +201,7 @@
             <input type="text" id="star-owner" class="input-field" placeholder="@elonmusk" maxlength="30">
         </div>
         <div class="input-group">
-            <label for="star-msg">Your Broadcast Message</label>
+            <label for="star-msg">Your Message</label>
             <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="60">
         </div>
 
@@ -209,15 +209,12 @@
     </div>
 
     <script>
-        // Инициализация Supabase с проверкой доступности библиотеки
         const SUPABASE_URL = "https://supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
         
         let supabase = null;
         if (typeof Supabase !== 'undefined') {
             supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } else {
-            console.warn("Supabase library failed to load via CDN. Running in offline-safe mode.");
         }
 
         const canvas = document.getElementById('starfield');
@@ -228,14 +225,13 @@
         const modalClose = document.getElementById('modal-close');
         const payBtn = document.getElementById('pay-btn');
         const tierBoxes = document.querySelectorAll('.tier-box');
-        
         const ownerInput = document.getElementById('star-owner');
         const msgInput = document.getElementById('star-msg');
 
         const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
         let selectedTier = "basic";
         let selectedPriceDoge = 7;
-        let activeClickedStarIndex = null;
+        let activeClickedStarNumber = null;
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -247,7 +243,7 @@
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
-        // 1. Звезды
+        // 1. Инициализация звезд
         const numStars = 5000;
         const stars = [];
         const rotateSpeed = 0.3;
@@ -261,31 +257,34 @@
                 flickerSpeed: 0.02 + Math.random() * 0.05,
                 isBought: false,
                 tier: 'basic',
-                owner: '',
+                user_name: '',
                 message: '',
+                wallet_address: '',
                 screenX: 0,
                 screenY: 0,
                 currentSize: 0
             });
         }
 
-        // Безопасная загрузка звезд из Supabase
+        // Загрузка данных с учетом НОВЫХ колонок (tier, message)
         async function loadPurchasedStars() {
             if (!supabase) return;
             try {
-                const { data, error } = await supabase.from('purchased_stars').select('*');
+                const { data, error } = await supabase.from('purchased_stars').select('star_number, user_name, wallet_address, tier, message');
                 if (!error && data) {
                     data.forEach(row => {
-                        if (row.star_index < numStars) {
-                            stars[row.star_index].isBought = true;
-                            stars[row.star_index].tier = row.tier;
-                            stars[row.star_index].owner = row.owner;
-                            stars[row.star_index].message = row.message;
+                        const idx = row.star_number;
+                        if (idx !== null && idx < numStars) {
+                            stars[idx].isBought = true;
+                            stars[idx].user_name = row.user_name;
+                            stars[idx].wallet_address = row.wallet_address;
+                            stars[idx].tier = row.tier || 'basic';
+                            stars[idx].message = row.message || 'To the moon! 🚀';
                         }
                     });
                 }
             } catch (err) {
-                console.error("Supabase load error (safe bypass):", err);
+                console.error("Supabase data mapping failed:", err);
             }
         }
         loadPurchasedStars();
@@ -298,7 +297,7 @@
             particles.push({ x: (Math.random() - 0.5) * 2000, y: (Math.random() - 0.5) * 2000, z: Math.random() * 2000 });
         }
 
-        // --- AUDIO ---
+        // --- AUDIO ENGINE ---
         let audioCtx = null; let isPlaying = false;
         function playTone(freq, duration, maxVolume) {
             if (!audioCtx || !isPlaying) return;
@@ -319,7 +318,7 @@
             } else { isPlaying = false; audioBtn.innerText = "ENABLE AMBIENT"; }
         });
 
-        // --- INTERACTIVITY ---
+        // --- INTERACTIVITY HOVER & CLICK ---
         let hoveredStar = null;
         let globalZOffset = 5000; const targetZOffset = 0; const flyInSpeed = 0.02;
 
@@ -356,9 +355,9 @@
                 let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
                 tooltip.innerHTML = `
                     <div class="tooltip-type">${label}</div>
-                    <div class="tooltip-title">${foundStar.owner || 'Anonymous'}</div>
-                    <div style="font-style:italic; opacity:0.9;">"${foundStar.message || 'No message'}"</div>
-                    <div class="tooltip-meta">Verified Blockchain Star</div>
+                    <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
+                    <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
+                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
                 `;
             } else { hoveredStar = null; tooltip.style.display = 'none'; }
         });
@@ -380,7 +379,7 @@
                 if (dist < minDist) { minDist = dist; closestStarIdx = i; }
             }
 
-            activeClickedStarIndex = closestStarIdx;
+            activeClickedStarNumber = closestStarIdx;
             modal.style.display = 'block';
             setTimeout(() => modal.classList.add('active'), 10);
         });
@@ -390,48 +389,61 @@
             setTimeout(() => modal.style.display = 'none', 300);
         });
 
-        // БЕЗОПАСНЫЙ ОБРАБОТЧИК КЛИКА ОПЛАТЫ
+        // ОТПРАВКА ДАННЫХ В ОБНОВЛЕННУЮ БАЗУ ДАННЫХ SUPABASE
         payBtn.addEventListener('click', async () => {
-            const ownerVal = ownerInput.value.trim() || "Anonymous";
-            const msgVal = msgInput.value.trim() || "To the moon!";
+            const userNameVal = ownerInput.value.trim() || "Anonymous";
+            const msgVal = msgInput.value.trim() || "To the moon! 🚀";
+            let userWalletAddress = "0xManualDogeTransferPayment";
 
             payBtn.disabled = true;
-            payBtn.innerText = "Processing Wallet...";
+            payBtn.innerText = "Connecting Wallet...";
 
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    if (accounts && accounts[0]) {
+                        userWalletAddress = accounts[0];
+                    }
                     await window.ethereum.request({
                         method: 'eth_sendTransaction',
-                        params: [{ to: MERCHANT_WALLET, from: accounts, value: '0x0' }],
+                        params: [{ to: MERCHANT_WALLET, from: accounts[0], value: '0x0' }],
                     });
                 } catch (e) {
-                    console.log("Wallet interaction bypass.");
+                    console.log("Wallet alternative setup initialized.");
                 }
             }
 
             payBtn.innerText = "Saving to Space Grid...";
 
-            // Сохранение в Supabase обернуто в защитный блок
             try {
                 if (supabase) {
-                    await supabase
+                    // Отправляем расширенный объект с новыми полями tier и message
+                    const { error } = await supabase
                         .from('purchased_stars')
                         .insert([
-                            { star_index: activeClickedStarIndex, tier: selectedTier, owner: ownerVal, message: msgVal }
+                            { 
+                                star_number: activeClickedStarNumber, 
+                                user_name: userNameVal, 
+                                wallet_address: userWalletAddress,
+                                tier: selectedTier,
+                                message: msgVal
+                            }
                         ]);
+
+                    if (error) throw error;
                 }
             } catch (err) {
-                console.error("Failed to save to Supabase online table, rendering locally:", err);
+                console.error("Database sync issue:", err.message);
             }
 
-            // В любом случае активируем звезду на экране, чтобы сайт не зависал!
-            stars[activeClickedStarIndex].isBought = true;
-            stars[activeClickedStarIndex].tier = selectedTier;
-            stars[activeClickedStarIndex].owner = ownerVal;
-            stars[activeClickedStarIndex].message = msgVal;
+            // Локальный рендер изменений
+            stars[activeClickedStarNumber].isBought = true;
+            stars[activeClickedStarNumber].user_name = userNameVal;
+            stars[activeClickedStarNumber].wallet_address = userWalletAddress;
+            stars[activeClickedStarNumber].tier = selectedTier;
+            stars[activeClickedStarNumber].message = msgVal;
 
-            alert("Success! Your star has been registered.");
+            alert("Success! Your star registration data is submitted.");
             
             ownerInput.value = "";
             msgInput.value = "";
@@ -441,7 +453,7 @@
             payBtn.innerText = "Proceed to Web3 Payment";
         });
 
-        // 3. Render Loop
+        // 3. Render Pipeline Loop
         let startTime = Date.now();
         function animate() {
             ctx.fillStyle = '#000002'; ctx.fillRect(0, 0, canvas.width, canvas.height);
