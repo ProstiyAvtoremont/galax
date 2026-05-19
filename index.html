@@ -8,103 +8,115 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #000000;
+            background-color: #020208; /* Глубокий космический цвет */
         }
         canvas {
             display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
     </style>
-    <!-- Подключаем стабильную версию Three.js -->
-    <script src="https://cloudflare.com"></script>
 </head>
 <body>
 
+    <!-- Используем стандартный HTML5 холст, который работает везде -->
+    <canvas id="starfield"></canvas>
+
     <script>
-        // 1. Инициализация сцены, камеры и рендерера
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.body.appendChild(renderer.domElement);
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
 
-        // Сдвигаем камеру немного назад, чтобы видеть поле изнутри
-        camera.position.z = 500;
-
-        // 2. Генерация текстуры круглой светящейся звезды без внешних картинок
-        function createStarTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 16;
-            canvas.height = 16;
-            const ctx = canvas.getContext('2d');
-            
-            // Создаем радиальный градиент (белый центр, размытый край)
-            const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-            gradient.addColorStop(0.2, 'rgba(255, 230, 100, 1)');
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, 16, 16);
-            
-            return new THREE.CanvasTexture(canvas);
+        // Настройка размеров экрана
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
+        window.addEventListener('resize', resize);
+        resize();
 
-        // 3. Создание геометрии для 5000 звезд
-        const starsCount = 5000;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(starsCount * 3);
+        // Параметры системы
+        const numStars = 5000;
+        const stars = [];
+        const speed = 0.5; // Скорость вращения неба
 
-        // Разбрасываем звезды в случайных координатах X, Y, Z
-        for (let i = 0; i < starsCount * 3; i += 3) {
-            positions[i] = (Math.random() - 0.5) * 2000;     // X
-            positions[i + 1] = (Math.random() - 0.5) * 2000; // Y
-            positions[i + 2] = (Math.random() - 0.5) * 2000; // Z
-        }
+        // Центр экрана (вокруг него будет вращение)
+        let cx = canvas.width / 2;
+        let cy = canvas.height / 2;
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-        // 4. Надежный стандартный материал со свечением
-        const material = new THREE.PointsMaterial({
-            color: 0xFFD700,             // Насыщенный желтый/золотой цвет
-            size: 4,                     // Размер звезд
-            map: createStarTexture(),    // Наша круглая размытая текстура
-            transparent: true,
-            blending: THREE.AdditiveBlending, // Эффект неонового сияния при наложении
-            depthWrite: false
-        });
-
-        // Создаем массив звезд и добавляем на сцену
-        const starField = new THREE.Points(geometry, material);
-        scene.add(starField);
-
-        // 5. Анимация (Вращение и Мерцание)
-        const clock = new THREE.Clock();
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            const time = clock.getElapsedTime();
-
-            // Медленное космическое вращение неба
-            starField.rotation.y = time * 0.02;
-            starField.rotation.x = time * 0.01;
-
-            // Реализация мерцания через синусоиду изменения размера звезд
-            material.size = 4 + Math.sin(time * 5.0) * 1.5;
-
-            renderer.render(scene, camera);
-        }
-
-        animate();
-
-        // 6. Поддержка изменения размеров экрана
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            cx = canvas.width / 2;
+            cy = canvas.height / 2;
         });
+
+        // 1. Инициализация 5000 звезд с 3D-координатами
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
+                x: (Math.random() - 0.5) * 3000, // Глубина X
+                y: (Math.random() - 0.5) * 3000, // Глубина Y
+                z: Math.random() * 3000,         // Дистанция Z (расстояние до экрана)
+                phase: Math.random() * Math.PI * 2, // Индивидуальная фаза мерцания
+                flickerSpeed: 0.02 + Math.random() * 0.05 // Скорость мерцания
+            });
+        }
+
+        // 2. Главный цикл анимации
+        function animate() {
+            // Очищаем экран черным цветом на каждом кадре
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Отрисовка каждой звезды
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+
+                // Имитация 3D вращения звезд вокруг центра
+                // Математически смещаем X и Y по тригонометрическому кругу
+                const rad = speed * 0.005;
+                const cos = Math.cos(rad);
+                const sin = Math.sin(rad);
+                
+                const x1 = star.x * cos - star.y * sin;
+                const y1 = star.y * cos + star.x * sin;
+                star.x = x1;
+                star.y = y1;
+
+                // Перевод 3D координат в 2D пиксели на экране (Перспектива)
+                // Чем ближе звезда (меньше Z), тем сильнее она разлетается к краям
+                const factor = 800 / (star.z + 1);
+                const screenX = cx + star.x * factor;
+                const screenY = cy + star.y * factor;
+
+                // Проверяем, попадает ли звезда в видимую область экрана
+                if (screenX >= 0 && screenX <= canvas.width && screenY >= 0 && screenY <= canvas.height) {
+                    
+                    // Рассчитываем мерцание через синусоиду
+                    star.phase += star.flickerSpeed;
+                    const brightness = 0.4 + Math.sin(star.phase) * 0.6; // Значение от 0.0 до 1.0
+
+                    // Базовый размер зависит от удаленности (Z-индекса)
+                    const baseSize = (1 - star.z / 3000) * 2.5;
+                    const size = Math.max(0.5, baseSize * (0.7 + brightness * 0.3));
+
+                    // Рисуем мягкое желтое свечение вокруг звезды
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, size * 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 215, 0, ${brightness * 0.15})`; // Полупрозрачный ореол
+                    ctx.fill();
+
+                    // Рисуем яркое желтое ядро звезды
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 235, 120, ${brightness})`; // Яркий центр
+                    ctx.fill();
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Запуск
+        animate();
     </script>
 </body>
 </html>
