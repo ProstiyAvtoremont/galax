@@ -94,71 +94,68 @@
             });
         }
 
-        // --- ГЕНЕРАТОР БЕЗОПАСНОГО КОСМИЧЕСКОГО ЭМБИЕНТА ---
+        // --- МЯГКИЙ БЕЗОПАСНЫЙ СИНТЕЗАТОР ЗВУКА ---
         let audioCtx = null;
         let isPlaying = false;
-        let osc1, osc2, filter, gainNode;
+        let oscMain, oscSub, filter, gainNode, lfo;
 
         function startAmbient() {
-            // Инициализируем аудио-контекст браузера
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
-            // Создаем два низкочастотных генератора волн для глубокого гула
-            osc1 = audioCtx.createOscillator();
-            osc2 = audioCtx.createOscillator();
+            // Используем только мягкие синусоидальные волны
+            oscMain = audioCtx.createOscillator();
+            oscSub = audioCtx.createOscillator();
             
-            // Создаем фильтр частот для мягкого космического "плавающего" звука
             filter = audioCtx.createBiquadFilter();
             gainNode = audioCtx.createGain();
 
-            // Настройки генераторов (низкие частоты для эффекта космоса)
-            osc1.type = 'sawtooth'; 
-            osc1.frequency.setValueAtTime(55, audioCtx.currentTime); // Нота Ля субконтроктавы
+            // Базовый бархатный тон
+            oscMain.type = 'sine';
+            oscMain.frequency.setValueAtTime(65.41, audioCtx.currentTime); // Мягкая нота До
             
-            osc2.type = 'triangle';
-            osc2.frequency.setValueAtTime(55.5, audioCtx.currentTime); // Небольшой сдвиг для эффекта хоруса
+            // Дополнительный тон для объемного звучания
+            oscSub.type = 'sine';
+            oscSub.frequency.setValueAtTime(98.00, audioCtx.currentTime); // Нота Соль (идеальный созвучный интервал)
 
-            // Настройка фильтра (срезаем жесткие высокие частоты)
+            // Настройка глубокого фильтра (срезаем всё, что выше мягкого баса)
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(120, audioCtx.currentTime);
-            filter.Q.setValueAtTime(5, audioCtx.currentTime);
+            filter.frequency.setValueAtTime(90, audioCtx.currentTime); // Очень низкий срез для мягкости
+            filter.Q.setValueAtTime(1, audioCtx.currentTime);
 
-            // Управление громкостью (плавное появление)
+            // Начальная минимальная громкость (плавный старт за 3 секунды)
             gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 2); // Макс громкость 15% за 2 секунды
+            gainNode.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 3);
 
-            // Соединяем цепочку: Генераторы -> Фильтр -> Громкость -> Колонки
-            osc1.connect(filter);
-            osc2.connect(filter);
+            // Соединяем компоненты
+            oscMain.connect(filter);
+            oscSub.connect(filter);
             filter.connect(gainNode);
             gainNode.connect(audioCtx.destination);
 
-            // Запускаем синтез звука
-            osc1.start();
-            osc2.start();
+            oscMain.start();
+            oscSub.start();
 
-            // Создаем плавное изменение фильтра во времени (эффект космического ветра)
-            function pulseFilter() {
+            // Автоматическое "дыхание" звука (плавный наплыв и затухание)
+            function pulseVolume() {
                 if (!isPlaying) return;
                 const now = audioCtx.currentTime;
-                // Частота фильтра будет плавно «дышать» между 80Гц и 180Гц
-                filter.frequency.linearRampToValueAtTime(80 + Math.random() * 100, now + 3 + Math.random() * 2);
-                setTimeout(pulseFilter, 4000);
+                // Громкость мягко колышется, создавая расслабляющий эффект
+                gainNode.gain.linearRampToValueAtTime(0.15 + Math.random() * 0.15, now + 4 + Math.random() * 2);
+                setTimeout(pulseVolume, 5000);
             }
-            pulseFilter();
+            pulseVolume();
         }
 
         function stopAmbient() {
             if (gainNode && audioCtx) {
                 const now = audioCtx.currentTime;
-                // Плавное затухание звука за 1 секунду перед выключением
                 gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-                gainNode.gain.linearRampToValueAtTime(0, now + 1);
+                gainNode.gain.linearRampToValueAtTime(0, now + 1.5); // Плавное исчезновение за 1.5 сек
                 setTimeout(() => {
-                    osc1.stop();
-                    osc2.stop();
+                    oscMain.stop();
+                    oscSub.stop();
                     audioCtx.close();
-                }, 1000);
+                }, 1600);
             }
         }
 
