@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Звездное Небо</title>
+    <title>3D Starfield Experience</title>
     <style>
         body {
             margin: 0;
@@ -17,6 +17,7 @@
             top: 0;
             left: 0;
         }
+        /* Music Control Button */
         #audio-btn {
             position: absolute;
             bottom: 20px;
@@ -43,14 +44,14 @@
 <body>
 
     <canvas id="starfield"></canvas>
-    <button id="audio-btn">ВКЛЮЧИТЬ ЭМБИЕНТ</button>
+    <button id="audio-btn">ENABLE AMBIENT</button>
 
     <script>
         const canvas = document.getElementById('starfield');
         const ctx = canvas.getContext('2d');
         const audioBtn = document.getElementById('audio-btn');
 
-        // Настройка размеров экрана
+        // Screen Resize Setup
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -66,7 +67,7 @@
             cy = canvas.height / 2;
         });
 
-        // 1. Звезды (5000 штук)
+        // 1. Core Stars Setup (5000 Stars)
         const numStars = 5000;
         const stars = [];
         const rotateSpeed = 0.5;
@@ -81,7 +82,7 @@
             });
         }
 
-        // 2. Летающие частицы (100 штук)
+        // 2. Flying Cosmic Particles Setup (100 Particles)
         const numParticles = 100;
         const particles = [];
         const flySpeed = 4;
@@ -94,31 +95,28 @@
             });
         }
 
-        // --- КРИСТАЛЬНО ЧИСТЫЙ МЕДИТАТИВНЫЙ ЭМБИЕНТ ---
+        // --- CRYSTAL CLEAR MEDITATIVE AMBIENT GENERATOR ---
         let audioCtx = null;
         let isPlaying = false;
         let ambientInterval = null;
 
-        // Функция создания одного мягкого, «наплывающего» звукового колебания
+        // Function to play a single smooth, fading tone
         function playTone(freq, duration, maxVolume) {
             if (!audioCtx || !isPlaying) return;
 
-            // Создаем осциллятор (чистая синусоида) и узел громкости
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
 
-            // Настройка волнообразной громкости (плавное появление и долгое затухание)
             const now = audioCtx.currentTime;
             gainNode.gain.setValueAtTime(0, now);
-            // Звук плавно нарастает (атака)
+            // Smooth attack
             gainNode.gain.linearRampToValueAtTime(maxVolume, now + duration * 0.4);
-            // Звук плавно растворяется (затухание)
+            // Smooth decay
             gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-            // Соединяем и запускаем
             osc.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             
@@ -130,17 +128,16 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             isPlaying = true;
 
-            // Гармонический космический аккорд (ноты МИ, ЛЯ, СИ высокой тональности)
+            // Harmonious cosmic chord (E, A, B notes in higher octaves)
             const notes = [329.63, 440.00, 493.88, 587.33, 659.25];
 
             function triggerWave() {
                 if (!isPlaying) return;
 
-                // Выбираем две случайные гармоничные ноты
                 const note1 = notes[Math.floor(Math.random() * notes.length)];
                 const note2 = notes[Math.floor(Math.random() * notes.length)];
 
-                // Запускаем их волнообразно с очень маленькой громкостью (всего 3-4%), чтобы не давило на уши
+                // Play delicate tones with very low volume (3-4%)
                 playTone(note1, 6 + Math.random() * 4, 0.03);
                 
                 setTimeout(() => {
@@ -148,9 +145,7 @@
                 }, 2000);
             }
 
-            // Запускаем первую волну сразу
             triggerWave();
-            // Повторяем волны каждые 6 секунд, создавая бесконечный перелив
             ambientInterval = setInterval(triggerWave, 6000);
         }
 
@@ -164,27 +159,27 @@
             }
         }
 
-        // Логика кнопки включения
+        // Button Click Logic
         audioBtn.addEventListener('click', () => {
             if (!isPlaying) {
                 startAmbient();
-                audioBtn.innerText = "ВЫКЛЮЧИТЬ ЗВУК";
+                audioBtn.innerText = "MUTE AUDIO";
                 audioBtn.style.borderColor = "rgba(255, 100, 100, 0.5)";
                 audioBtn.style.color = "#ff6464";
             } else {
                 stopAmbient();
-                audioBtn.innerText = "ВКЛЮЧИТЬ ЭМБИЕНТ";
+                audioBtn.innerText = "ENABLE AMBIENT";
                 audioBtn.style.borderColor = "rgba(255, 215, 0, 0.5)";
                 audioBtn.style.color = "#ffd700";
             }
         });
 
-        // 3. Главный цикл анимации (Отрисовка)
+        // 3. Main Animation Loop (Rendering)
         function animate() {
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // МЕРЦАЮЩИЕ ЗВЕЗДЫ
+            // TWINKLING STARS
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 const rad = rotateSpeed * 0.005;
@@ -217,7 +212,7 @@
                 }
             }
 
-            // ЛЕТАЮЩИЕ ЧАСТИЦЫ
+            // FLYING PARTICLES
             for (let i = 0; i < numParticles; i++) {
                 const p = particles[i];
                 p.z -= flySpeed;
