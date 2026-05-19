@@ -5,18 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Star Ownership Map</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-
 <style>
 body {
     margin:0;
     overflow:hidden;
-    background:#000;
-    color:white;
+    background:black;
     font-family:Arial;
+    color:white;
 }
 
-canvas { position:absolute; top:0; left:0; }
+canvas {
+    position:absolute;
+    top:0;
+    left:0;
+}
 
 #ui {
     position:absolute;
@@ -37,8 +39,8 @@ button {
     padding:10px 15px;
     background:gold;
     border:none;
-    cursor:pointer;
     border-radius:8px;
+    cursor:pointer;
 }
 
 /* modal */
@@ -53,21 +55,24 @@ button {
     display:none;
     width:320px;
 }
+
 .option {
     padding:10px;
     border:1px solid #333;
     margin:8px 0;
     cursor:pointer;
 }
-.option:hover { border-color:gold; }
-.highlight { color:gold; font-weight:bold; }
 
+.option:hover {
+    border-color:gold;
+}
 </style>
 </head>
+
 <body>
 
 <div id="ui">
-    <input id="search" placeholder="Star ID (0 - 2M)" />
+    <input id="search" placeholder="Star ID (0 - 2,000,000)" />
     <button onclick="searchStar()">Search</button>
 </div>
 
@@ -77,32 +82,25 @@ button {
     <h3 id="title">Buy Star</h3>
 
     <div class="option" onclick="selectTier('basic')">
-        ⭐ Basic — $1 DOGE<br/>
-        Name + short message
+        ⭐ Basic ($1 DOGE)
     </div>
 
     <div class="option" onclick="selectTier('supernova')">
-        ✨ Supernova — $3-$5 DOGE<br/>
-        Bigger glow + link + highlight
+        ✨ Supernova ($3-$5 DOGE)
     </div>
 
     <div class="option" onclick="selectTier('constellation')">
-        🌌 Constellation — $20-$50 DOGE<br/>
-        Group stars / brand cluster
+        🌌 Constellation ($20-$50 DOGE)
     </div>
 
-    <button onclick="pay()">Pay with DOGE</button>
+    <button onclick="pay()">Pay (DOGE)</button>
 </div>
 
 <script>
-/* =========================
-   CONFIG (SUPABASE LATER)
-========================= */
-let SUPABASE_URL = "";
-let SUPABASE_KEY = "";
-let supabase = null;
 
-/* ========================= */
+/* =========================
+   CANVAS INIT
+========================= */
 
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
@@ -115,7 +113,7 @@ addEventListener("resize", resize);
 resize();
 
 /* =========================
-   STARS (VISIBLE ONLY 3000)
+   BACKGROUND STARS
 ========================= */
 
 const STAR_COUNT = 3000;
@@ -131,22 +129,23 @@ for(let i=0;i<STAR_COUNT;i++){
 }
 
 /* =========================
-   VIRTUAL STAR POSITION (2M SYSTEM)
+   VIRTUAL STAR SYSTEM
 ========================= */
 
 const MAX_ID = 2000000;
 
 function getStarPosition(id){
     const seed = id * 99991;
+
     return {
-        x: Math.sin(seed)*2000,
-        y: Math.cos(seed)*2000,
-        z: (Math.sin(seed*2)*1000)+1500
+        x: Math.sin(seed) * 2400,
+        y: Math.cos(seed) * 2400,
+        z: (Math.sin(seed*2) * 1000) + 1500
     };
 }
 
 /* =========================
-   CAMERA
+   CAMERA SYSTEM
 ========================= */
 
 let camX = 0;
@@ -154,26 +153,32 @@ let camY = 0;
 let targetX = 0;
 let targetY = 0;
 
-function clamp(x){
-    return Math.max(-3000, Math.min(3000, x));
-}
+let focusedId = null;
 
 /* =========================
-   STATE
+   CAMERA SAFETY (NO BLACK SCREEN)
 ========================= */
 
-let focusedId = null;
-let selectedTier = "basic";
+function applyCameraSafety(){
+    const limit = 7000;
+
+    camX = Math.max(-limit, Math.min(limit, camX));
+    camY = Math.max(-limit, Math.min(limit, camY));
+
+    camX *= 0.9996;
+    camY *= 0.9996;
+}
 
 /* =========================
    SEARCH
 ========================= */
 
 function searchStar(){
+
     const id = parseInt(document.getElementById("search").value);
 
     if(isNaN(id) || id < 0 || id > MAX_ID){
-        alert("Invalid ID");
+        alert("Invalid Star ID");
         return;
     }
 
@@ -181,32 +186,29 @@ function searchStar(){
 
     focusedId = id;
 
-    targetX = clamp(-pos.x);
-    targetY = clamp(-pos.y);
+    targetX = -pos.x;
+    targetY = -pos.y;
 
-    // check if bought
-    if(false){
-        // placeholder for DB check
-    } else {
-        document.getElementById("modal").style.display = "block";
-        document.getElementById("title").innerText = "Buy Star #" + id;
-    }
+    document.getElementById("modal").style.display = "block";
+    document.getElementById("title").innerText = "Star #" + id;
 }
 
 /* =========================
    TIER SELECT
 ========================= */
 
+let selectedTier = "basic";
+
 function selectTier(t){
     selectedTier = t;
 }
 
 /* =========================
-   PAYMENT (DOGE PLACEHOLDER)
+   PAYMENT PLACEHOLDER
 ========================= */
 
 function pay(){
-    alert("Payment sent to DOGE wallet (placeholder)");
+    alert("DOGE payment sent (placeholder)");
     document.getElementById("modal").style.display = "none";
 }
 
@@ -215,38 +217,58 @@ function pay(){
 ========================= */
 
 function animate(){
-    ctx.fillStyle="black";
+
+    ctx.fillStyle = "black";
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    camX += (targetX - camX)*0.05;
-    camY += (targetY - camY)*0.05;
+    /* smooth camera */
+    camX += (targetX - camX) * 0.06;
+    camY += (targetY - camY) * 0.06;
 
-    // background stars
+    applyCameraSafety();
+
+    const cx = canvas.width/2;
+    const cy = canvas.height/2;
+
+    /* background stars */
     for(let s of stars){
 
         s.phase += 0.02;
 
-        const brightness = 0.5 + Math.sin(s.phase)*0.5;
+        const brightness = 0.4 + Math.sin(s.phase)*0.6;
 
         const factor = 800/(s.z+1);
 
-        const x = canvas.width/2 + (s.x + camX)*factor;
-        const y = canvas.height/2 + (s.y + camY)*factor;
+        const px = s.x + camX;
+        const py = s.y + camY;
+
+        const x = cx + px * factor;
+        const y = cy + py * factor;
+
+        if(x < -50 || x > canvas.width+50 || y < -50 || y > canvas.height+50)
+            continue;
 
         ctx.fillStyle = `rgba(255,255,255,${brightness})`;
         ctx.fillRect(x,y,2,2);
     }
 
-    // focused star highlight
+    /* highlight focused star */
     if(focusedId !== null){
+
         const p = getStarPosition(focusedId);
 
-        const fx = canvas.width/2 + (p.x + camX)*1;
-        const fy = canvas.height/2 + (p.y + camY)*1;
+        const fx = cx + (p.x + camX);
+        const fy = cy + (p.y + camY);
 
         ctx.beginPath();
-        ctx.arc(fx,fy,20,0,Math.PI*2);
-        ctx.strokeStyle="gold";
+        ctx.arc(fx,fy,30,0,Math.PI*2);
+        ctx.strokeStyle = "gold";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(fx,fy,45 + Math.sin(Date.now()*0.01)*5,0,Math.PI*2);
+        ctx.strokeStyle = "rgba(255,215,0,0.25)";
         ctx.stroke();
     }
 
@@ -256,5 +278,6 @@ function animate(){
 animate();
 
 </script>
+
 </body>
 </html>
