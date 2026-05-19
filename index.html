@@ -300,7 +300,8 @@
         let cy = canvas.height / 2;
 
         // 1. Инициализация звезд
-        const numStars = 5000;
+        const MAX_STARS = 2000000;
+        const numStars = Math.min(4000, MAX_STARS)
         const stars = [];
         const rotateSpeed = 0.3;
 
