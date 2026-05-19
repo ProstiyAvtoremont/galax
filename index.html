@@ -222,6 +222,22 @@
             });
         }
 
+        // Add Premium Purchased Demo Stars to the grid for interactive testing
+        stars[100].isBought = true;
+        stars[100].tier = 'basic';
+        stars[100].owner = '@dogecoin_fan';
+        stars[100].message = 'To the moon! 🚀 Loving this space.';
+        
+        stars[250].isBought = true;
+        stars[250].tier = 'supernova';
+        stars[250].owner = '@elonmusk';
+        stars[250].message = 'DOGE starfield is beautiful. Next stop: Mars.';
+        
+        stars[400].isBought = true;
+        stars[400].tier = 'constellation';
+        stars[400].owner = 'Dogecoin Foundation';
+        stars[400].message = 'Official corporate B2B cluster ecosystem.';
+
         // 2. Flying Cosmic Particles (100 Particles)
         const numParticles = 100;
         const particles = [];
@@ -299,10 +315,12 @@
             
             let foundStar = null;
 
+            // Search for collision with bought premium stars
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 if (!star.isBought) continue;
 
+                // Checking hit box radius based on current dynamic scale
                 const dx = mouseX - star.screenX;
                 const dy = mouseY - star.screenY;
                 const hitRadius = Math.max(star.currentSize * 3, 10); 
@@ -319,6 +337,7 @@
                 tooltip.style.left = `${e.clientX + 15}px`;
                 tooltip.style.top = `${e.clientY + 15}px`;
                 
+                // Styling tooltip layout according to premium tier definition
                 tooltip.className = foundStar.tier;
                 
                 let tierLabel = '⭐ Basic Node';
@@ -337,11 +356,14 @@
             }
         });
 
+        // Open Payment Wall Canvas System Click Setup
         canvas.addEventListener('click', (e) => {
             if (hoveredStar) {
+                // If clicked on an already bought star, open their socials profile mock
                 alert(`Redirecting to profile page of ${hoveredStar.owner}`);
                 return;
             }
+            // If clicked on an empty zone space, trigger purchase window overlay
             modal.style.display = 'block';
             setTimeout(() => modal.classList.add('active'), 10);
         });
@@ -352,6 +374,7 @@
         });
 
         // 3. Render Engine Pipeline Animation Loop
+        const clock = new THREE ? null : { getElapsedTime: (() => { let start = Date.now(); return () => (Date.now() - start)/1000; })() };
         let startTime = Date.now();
 
         function animate() {
@@ -392,7 +415,26 @@
                     let starColor = `rgba(255, 235, 120, ${brightness})`;
                     let auraColor = `rgba(255, 215, 0, ${brightness * 0.15})`;
 
-                    star.currentSize = size; 
+                    // Modify rendering properties if star belongs to a user
+                    if (star.isBought) {
+                        if (star.tier === 'basic') {
+                            size *= 1.8;
+                            starColor = `rgba(255, 240, 150, ${brightness})`;
+                        } else if (star.tier === 'supernova') {
+                            // Pulsing crimson supernova effect
+                            const pulse = 1.2 + Math.sin(time * 6) * 0.4;
+                            size *= 2.8 * pulse;
+                            starColor = `rgba(255, 51, 102, 1)`;
+                            auraColor = `rgba(255, 51, 102, 0.3)`;
+                        } else if (star.tier === 'constellation') {
+                            // Electric cyan cyber grid node
+                            size *= 3.5;
+                            starColor = `rgba(0, 255, 255, 1)`;
+                            auraColor = `rgba(0, 255, 255, 0.35)`;
+                        }
+                    }
+
+                    star.currentSize = size; // Save hitbox size tracking variables
 
                     // Outer Aura Core
                     ctx.beginPath();
@@ -409,6 +451,7 @@
             }
 
             // FLYING PARTICLES (Speed field space warp effect)
+            // Show only after initial zoom in process stabilizes
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i];
