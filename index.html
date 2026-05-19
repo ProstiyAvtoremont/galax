@@ -22,7 +22,7 @@
             display: block;
         }
     </style>
-    <!-- Используем стабильную CDN-версию Three.js -->
+    <!-- Подключаем стабильную версию Three.js -->
     <script src="https://cloudflare.com"></script>
 </head>
 <body>
@@ -32,15 +32,14 @@
     <script>
         // --- НАСТРОЙКИ ---
         const TOTAL_SECTIONS = 6;        // Количество секторов глубины
-        const STARS_PER_SECTION = 10000; // Количество звезд на один сектор (всего 1 000 000)
-        const STAR_SIZE = 0.08;          // Базовый размер звезд
-        const FLIGHT_SPEED = 4.0;        // Скорость полета вперед
+        const STARS_PER_SECTION = 10000; // Звезд на один сектор (всего 60 000)
+        const BASE_STAR_SIZE = 4.0;      // Размер обычных звезд в пикселях
+        const FLIGHT_SPEED = 6.0;        // Скорость автоматического полета
 
         // --- ИНИЦИАЛИЗАЦИЯ СЦЕНЫ ---
         const canvas = document.getElementById('galaxy');
         const scene = new THREE.Scene();
         
-        // Камера с оптимальным углом обзора
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.z = 5; 
 
@@ -48,65 +47,94 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-        // --- СОЗДАНИЕ ГАЛАКТИКИ ---
+        // --- СОЗДАНИЕ СИСТЕМЫ ЧАСТИЦ (ЗВЕЗД) ---
         const totalStars = STARS_PER_SECTION * TOTAL_SECTIONS;
+        const geometry = new THREE.BufferGeometry();
         
-        // Маленькая сфера для каждой звезды
-        const starGeometry = new THREE.SphereGeometry(STAR_SIZE, 4, 4);
-        
-        // Чистый стандартный материал без кастомных шейдеров — гарантия работы во всех браузерах
-        const starMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-        
-        const starMesh = new THREE.InstancedMesh(starGeometry, starMaterial, totalStars);
-        
-        // Подготовка массивов для управления звездами
-        const dummy = new THREE.Object3D();
-        const initialPositions = [];
-        const phases = new Float32Array(totalStars); // Фаза индивидуального мерцания
-        const starColors = new Float32Array(totalStars * 3); // Массив для цветов (RGB)
+        // Массивы для хранения параметров каждой звезды
+        const positions = new Float32Array(totalStars * 3);
+        const colors = new Float32Array(totalStars * 3);
+        const sizes = new Float32Array(totalStars);
+        const phases = new Float32Array(totalStars);
 
         const sectionDepth = 25; 
         let starIndex = 0;
 
-        // Генерация позиций звезд по секторам глубины
+        // Распределяем 60 000 звезд по космосу
         for (let s = 0; s < TOTAL_SECTIONS; s++) {
-            const zOffset = -s * sectionDepth; 
+            const zOffset = -s * sectionDepth;
 
             for (let i = 0; i < STARS_PER_SECTION; i++) {
-                // Распределяем по ширине (X), высоте (Y) и глубине (Z)
-                const x = (Math.random() - 0.5) * 55; 
-                const y = (Math.random() - 0.5) * 35;
-                const z = zOffset + (Math.random() - 0.5) * sectionDepth; 
+                // Координаты
+                positions[starIndex * 3] = (Math.random() - 0.5) * 60;     // X
+                positions[starIndex * 3 + 1] = (Math.random() - 0.5) * 40; // Y
+                positions[starIndex * 3 + 2] = zOffset + (Math.random() - 0.5) * sectionDepth; // Z
 
-                dummy.position.set(x, y, z);
-                dummy.scale.set(1, 1, 1);
-                dummy.updateMatrix();
-                
-                starMesh.setMatrixAt(starIndex, dummy.matrix);
-                initialPositions.push(new THREE.Vector3(x, y, z));
-                
-                // Случайная частота мерцания
-                phases[starIndex] = 2.0 + Math.random() * 4.0;
-                
-                // По умолчанию все звезды белые (RGB: 1.0, 1.0, 1.0)
-                starColors[starIndex * 3] = 1.0;
-                starColors[starIndex * 3 + 1] = 1.0;
-                starColors[starIndex * 3 + 2] = 1.0;
+                // Начальный белый цвет (RGB: 1, 1, 1)
+                colors[starIndex * 3] = 1.0;
+                colors[starIndex * 3 + 1] = 1.0;
+                colors[starIndex * 3 + 2] = 1.0;
+
+                // Базовый размер
+                sizes[starIndex] = BASE_STAR_SIZE;
+
+                // Случайная фаза/скорость для мерцания
+                phases[starIndex] = 2.0 + Math.random() * 5.0;
 
                 starIndex++;
             }
         }
 
-        // Привязываем массив цветов к нашей сетке звезд
-        starMesh.instanceColor = new THREE.InstancedBufferAttribute(starColors, 3);
-        scene.add(starMesh);
+        // Записываем массивы в геометрию Three.js
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-        // --- ИНТЕРАКТИВ (ЛУЧ НАВЕДЕНИЯ МЫШИ) ---
+        // Создаем текстуру круглой светящейся точки (чтобы звезды не были квадратными пикселями)
+        const createStarTexture = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 16;
+            canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 16, 16);
+            return new THREE.CanvasTexture(canvas);
+        };
+
+        // Специальный материал для частиц с поддержкой кастомных шейдеров размера
+        const material = new THREE.PointsMaterial({
+            size: 1.0,
+            vertexColors: true,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            map: createStarTexture()
+        });
+
+        // Кастомный шейдер, который связывает массив размеров sizes с экраном
+        material.onBeforeCompile = (shader) => {
+            geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+            
+            shader.vertexShader = `
+                attribute float aSize;
+                ${shader.vertexShader}
+            `.replace(
+                `gl_PointSize = size;`,
+                `gl_PointSize = aSize;`
+            );
+        };
+
+        const starPoints = new THREE.Points(geometry, material);
+        scene.add(starPoints);
+
+        // --- ИНТЕРАКТИВ (НАВЕДЕНИЕ МЫШИ) ---
         const raycaster = new THREE.Raycaster();
-        raycaster.params.Points.threshold = 0.5; // Чувствительность попадания по звезде
+        raycaster.params.Points.threshold = 0.3; // Радиус захвата мыши вокруг звезды
         
         const mouse = new THREE.Vector2(-100, -100);
-        let hoveredInstanceId = null;
+        let hoveredIndex = null;
 
         window.addEventListener('mousemove', (event) => {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -119,45 +147,56 @@
 
         function updateHover() {
             raycaster.setFromCamera(mouse, camera);
-            const intersects = raycaster.intersectObject(starMesh);
+            const intersects = raycaster.intersectObject(starPoints);
 
             if (intersects.length > 0) {
-                const instanceId = intersects.instanceId;
-                if (hoveredInstanceId !== instanceId) {
-                    if (hoveredInstanceId !== null) resetStar(hoveredInstanceId);
-                    hoveredInstanceId = instanceId;
-                    highlightStar(instanceId);
+                // Берем индекс конкретной точки в массиве
+                const idx = intersects[0].index;
+
+                if (hoveredIndex !== idx) {
+                    if (hoveredIndex !== null) resetStar(hoveredIndex);
+                    hoveredIndex = idx;
+                    highlightStar(idx);
                 }
             } else {
-                if (hoveredInstanceId !== null) {
-                    resetStar(hoveredInstanceId);
-                    hoveredInstanceId = null;
+                if (hoveredIndex !== null) {
+                    resetStar(hoveredIndex);
+                    hoveredIndex = null;
                 }
             }
         }
 
-        function highlightStar(id) {
-            // Увеличиваем звезду в 10 раз
-            dummy.position.copy(initialPositions[id]);
-            dummy.scale.set(10, 10, 10);
-            dummy.updateMatrix();
-            starMesh.setMatrixAt(id, dummy.matrix);
-            starMesh.instanceMatrix.needsUpdate = true;
+        function highlightStar(idx) {
+            // Увеличиваем в 10 раз (с 4px до 40px)
+            const sizeAttr = geometry.getAttribute('aSize');
+            if (sizeAttr) {
+                sizeAttr.setX(idx, BASE_STAR_SIZE * 10);
+                sizeAttr.needsUpdate = true;
+            }
+
+            // Красим в ярко-желтый цвет
+            const colorAttr = geometry.getAttribute('color');
+            colorAttr.setXYZ(idx, 1.0, 0.85, 0.0); // Желтый (RGB)
+            colorAttr.needsUpdate = true;
         }
 
-        function resetStar(id) {
-            // Возвращаем звезде обычный масштаб
-            dummy.position.copy(initialPositions[id]);
-            dummy.scale.set(1, 1, 1);
-            dummy.updateMatrix();
-            starMesh.setMatrixAt(id, dummy.matrix);
-            starMesh.instanceMatrix.needsUpdate = true;
+        function resetStar(idx) {
+            // Возвращаем исходный размер
+            const sizeAttr = geometry.getAttribute('aSize');
+            if (sizeAttr) {
+                sizeAttr.setX(idx, BASE_STAR_SIZE);
+                sizeAttr.needsUpdate = true;
+            }
+
+            // Возвращаем белый цвет
+            const colorAttr = geometry.getAttribute('color');
+            colorAttr.setXYZ(idx, 1.0, 1.0, 1.0);
+            colorAttr.needsUpdate = true;
         }
 
         // --- АНИМАЦИЯ ---
         const clock = new THREE.Clock();
         const totalDepth = TOTAL_SECTIONS * sectionDepth;
-        const colorTarget = new THREE.Color();
 
         function animate() {
             requestAnimationFrame(animate);
@@ -165,26 +204,21 @@
             const delta = clock.getDelta();
             const time = clock.getElapsedTime();
             
-            // --- ЛОГИКА МЕРЦАНИЯ И ПОДСВЕТКИ ---
-            const colorAttr = starMesh.instanceColor;
-            
+            // Динамическое мерцание обычных звезд
+            const colorAttr = geometry.getAttribute('color');
             for (let i = 0; i < totalStars; i++) {
-                if (i === hoveredInstanceId) {
-                    // Наведенная звезда горит стабильным ярко-желтым цветом
-                    colorTarget.setHex(0xffd700);
-                    colorAttr.setXYZ(i, colorTarget.r * 2.0, colorTarget.g * 2.0, colorTarget.b * 2.0);
-                } else {
-                    // Обычные звезды мерцают (яркость от 0.2 до 1.0)
+                if (i !== hoveredIndex) {
+                    // Мерцание: меняем яркость белого цвета по синусоиде от 0.2 до 1.0
                     const brightness = 0.2 + 0.8 * Math.abs(Math.sin(time * phases[i]));
                     colorAttr.setXYZ(i, brightness, brightness, brightness);
                 }
             }
             colorAttr.needsUpdate = true;
 
-            // Автоматический полет камеры вперед по оси Z
+            // Камера непрерывно летит вперед по оси Z
             camera.position.z -= FLIGHT_SPEED * delta;
 
-            // Когда долетели до конца, плавно переносимся на старт
+            // Эффект бесконечной галактики (перенос камеры на старт)
             if (camera.position.z < -totalDepth) {
                 camera.position.z = 5;
             }
@@ -193,14 +227,14 @@
             renderer.render(scene, camera);
         }
 
-        // --- АДАПТИВНОСТЬ ПОД РАЗРЕШЕНИЕ ЭКРАНА ---
+        // --- АДАПТИВНОСТЬ ОКНА ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Старт цикла рендеринга
+        // Запуск
         animate();
     </script>
 </body>
