@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
-    <!-- Подключаем стабильную библиотеку Supabase -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body {
@@ -211,7 +210,6 @@
 </head>
 <body>
 
-    <!-- NEW: Search Input Interface Structure -->
     <div class="search-container">
         <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
         <button id="search-btn" class="search-btn">SEARCH</button>
@@ -271,23 +269,24 @@
         const tierBoxes = document.querySelectorAll('.tier-box');
         const ownerInput = document.getElementById('star-owner');
         const msgInput = document.getElementById('star-msg');
-        
-        // Search selectors
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
-
         const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
+        
         let selectedTier = "basic";
         let selectedPriceDoge = 7;
         let activeClickedStarNumber = null;
-        
-        // Target focus index for camera mechanics tracking
         let focusedStarIndex = null;
         let targetXOffset = 0;
         let targetYOffset = 0;
         let currentXOffset = 0;
         let currentYOffset = 0;
         let focusedStarHovered = false;
+
+        // --- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ СОСЕДЕЙ ---
+        function isNeighborStar(i) {
+            return focusedStarIndex !== null && i >= focusedStarIndex - 5 && i <= focusedStarIndex + 5;
+        }
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -299,7 +298,6 @@
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
-        // 1. Инициализация звезд
         const numStars = 2000000;
         const stars = [];
         const rotateSpeed = 0.3;
@@ -344,7 +342,6 @@
         }
         loadPurchasedStars();
 
-        // 2. Частицы
         const numParticles = 100;
         const particles = [];
         const flySpeed = 5;
@@ -352,8 +349,8 @@
             particles.push({ x: (Math.random() - 0.5) * 2000, y: (Math.random() - 0.5) * 2000, z: Math.random() * 2000 });
         }
 
-        // --- AUDIO ENGINE ---
-        let audioCtx = null; let isPlaying = false;
+        let audioCtx = null;
+        let isPlaying = false;
         function playTone(freq, duration, maxVolume) {
             if (!audioCtx || !isPlaying) return;
             const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
@@ -373,7 +370,6 @@
             } else { isPlaying = false; audioBtn.innerText = "ENABLE AMBIENT"; }
         });
 
-        // --- INTERACTIVITY HOVER & CLICK & SEARCH ---
         let hoveredStar = null;
         let globalZOffset = 5000; const targetZOffset = 0; const flyInSpeed = 0.02;
 
@@ -386,7 +382,6 @@
             });
         });
 
-        // NEW: Search engine button handler mechanics
         searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
@@ -395,15 +390,11 @@
             }
 
             const targetStar = stars[idVal];
-            
-            // Рассчитываем случайные экранные координаты в пределах видимой области (с безопасными отступами 15%)
             const paddingX = canvas.width * 0.15;
             const paddingY = canvas.height * 0.15;
             const randomScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
             const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
 
-            // Меняем физическое положение звезды в пространстве под экран пользователя,
-            // чтобы камера не улетала в пустые края галактики.
             targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
             targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
             
@@ -412,11 +403,9 @@
             targetYOffset = 0;
 
             if (targetStar.isBought) {
-                // Если звезда куплена, принудительно открываем тултип рядом с ней
                 setTimeout(() => {
                     tooltip.style.display = 'block';
                     tooltip.className = targetStar.tier;
-                    
                     let label = targetStar.tier === 'supernova' ? '⚡ Supernova Core' : (targetStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
                     tooltip.innerHTML = `
                         <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND STAR #${idVal}</div>
@@ -426,26 +415,16 @@
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
                         <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
                     `;
-
-                    // Проверка выхода за пределы экрана
                     let left = randomScreenX + 20;
                     let top = randomScreenY - 20;
-
-                    if (left + tooltip.offsetWidth > window.innerWidth) {
-                        left = randomScreenX - tooltip.offsetWidth - 20;
-                    }
-                    if (top + tooltip.offsetHeight > window.innerHeight) {
-                        top = window.innerHeight - tooltip.offsetHeight - 20;
-                    }
+                    if (left + tooltip.offsetWidth > window.innerWidth) left = randomScreenX - tooltip.offsetWidth - 20;
+                    if (top + tooltip.offsetHeight > window.innerHeight) top = window.innerHeight - tooltip.offsetHeight - 20;
                     if (left < 10) left = 10;
                     if (top < 10) top = 10;
-
                     tooltip.style.left = `${left}px`;
                     tooltip.style.top = `${top}px`;
                 }, 400);
             } else {
-                // Если свободна — убираем тултип и предлагаем купить её
-                tooltip.style.display = 'none';
                 if (confirm(`Star #${idVal} [X:${Math.round(targetStar.x)}, Y:${Math.round(targetStar.y)}, Z:${Math.round(targetStar.z)}] is FREE! Would you like to buy it right now?`)) {
                     activeClickedStarNumber = idVal;
                     document.getElementById('modal-title').innerText = `Claim Star #${idVal} (${Math.round(targetStar.x)}, ${Math.round(targetStar.y)})`;
@@ -468,7 +447,6 @@
                 const dxFocus = mouseX - focusedStar.screenX;
                 const dyFocus = mouseY - focusedStar.screenY;
                 const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
-
                 if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
                     focusedStarHovered = true;
                     canvas.style.cursor = 'pointer';
@@ -477,18 +455,17 @@
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-                if (!star.isBought) continue;
+                if (!star.isBought && !isNeighborStar(i)) continue;
                 const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
                 const hitRadius = Math.max(star.currentSize * 3, 10);
                 if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break; }
             }
 
             if (foundStar) {
-                focusedStarIndex = null; // Отменяем фокус поиска, если пользователь водит мышкой
+                focusedStarIndex = null;
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
                 tooltip.className = foundStar.tier;
-                
                 let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
                 tooltip.innerHTML = `
                     <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
@@ -498,29 +475,18 @@
                     <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
                     <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
                 `;
-
-                // Проверка выхода за пределы экрана
                 let left = e.clientX + 15;
                 let top = e.clientY + 15;
-
-                if (left + tooltip.offsetWidth > window.innerWidth) {
-                    left = e.clientX - tooltip.offsetWidth - 15;
-                }
-                if (top + tooltip.offsetHeight > window.innerHeight) {
-                    top = e.clientY - tooltip.offsetHeight - 15;
-                }
+                if (left + tooltip.offsetWidth > window.innerWidth) left = e.clientX - tooltip.offsetWidth - 15;
+                if (top + tooltip.offsetHeight > window.innerHeight) top = e.clientY - tooltip.offsetHeight - 15;
                 if (left < 10) left = 10;
                 if (top < 10) top = 10;
-
                 tooltip.style.left = `${left}px`;
                 tooltip.style.top = `${top}px`;
-
-                if (!focusedStarHovered) {
-                    canvas.style.cursor = 'crosshair';
-                }
+                if (!focusedStarHovered) canvas.style.cursor = 'crosshair';
             } else { 
                 if (focusedStarIndex === null) {
-                    hoveredStar = null; 
+                    hoveredStar = null;
                     tooltip.style.display = 'none'; 
                 }
             }
@@ -534,11 +500,16 @@
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
+      
             let closestStarIdx = 0;
             let minDist = Infinity;
 
             for (let i = 0; i < numStars; i++) {
-                if (stars[i].isBought) continue;
+                if (stars[i].isBought || isNeighborStar(i)) {
+                    // Разрешаем кликать по купленным или соседям
+                } else {
+                    continue;
+                }
                 const dx = mouseX - stars[i].screenX;
                 const dy = mouseY - stars[i].screenY;
                 const dist = dx*dx + dy*dy;
@@ -557,7 +528,6 @@
             setTimeout(() => modal.style.display = 'none', 300);
         });
 
-        // ОТПРАВКА ДАННЫХ В SUPABASE
         payBtn.addEventListener('click', async () => {
             const userNameVal = ownerInput.value.trim() || "Anonymous";
             const msgVal = msgInput.value.trim() || "To the moon! 🚀";
@@ -578,7 +548,6 @@
             }
 
             payBtn.innerText = "Saving to Space Grid...";
-
             try {
                 if (supabase) {
                     await supabase.from('purchased_stars').insert([
@@ -594,7 +563,6 @@
             stars[activeClickedStarNumber].message = msgVal;
 
             alert(`Success! Star #${activeClickedStarNumber} is registered.`);
-            
             ownerInput.value = ""; msgInput.value = "";
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
@@ -602,34 +570,23 @@
             payBtn.innerText = "Proceed to Web3 Payment";
         });
 
-        // 3. Render Pipeline Loop
-        let startTime = Date.now();
         function animate() {
-            ctx.fillStyle = '#000002'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000002';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             const time = (Date.now() - startTime) * 0.001;
-
             if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
-
-            // Плавная интерполяция смещения камеры к выбранной звезде
             if (focusedStarIndex !== null) {
                 currentXOffset += (targetXOffset - currentXOffset) * 0.08;
                 currentYOffset += (targetYOffset - currentYOffset) * 0.08;
             } else {
-                // Если фокуса поиска нет, камера медленно возвращается в центр
                 currentXOffset += (0 - currentXOffset) * 0.02;
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-                
-                // Оптимизация производительности: рендерим первые 5000 фоновых звезд + только те, которые куплены или находятся в поиске
-                if (i >= 5000 && !star.isBought && i !== focusedStarIndex) continue;
-                
-               // STATIC STARS
-               // вращение отключено — звезды остаются неподвижными
+                if (i >= 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
 
-                // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
                 star.screenY = cy + (star.y + currentYOffset) * factor;
@@ -638,18 +595,19 @@
                     star.phase += star.flickerSpeed;
                     const brightness = 0.4 + Math.sin(star.phase) * 0.6;
                     const baseSize = (1 - (star.z + globalZOffset) / 8000) * 2.2;
-                    
                     let size = Math.max(0.4, baseSize * (0.7 + brightness * 0.3));
                     let starColor = `rgba(255, 235, 120, ${brightness})`;
                     let auraColor = `rgba(255, 215, 0, ${brightness * 0.15})`;
 
                     if (star.isBought) {
-                        if (star.tier === 'basic') { size *= 2.0; starColor = `rgba(255, 235, 120, 1)`; } 
+                        if (star.tier === 'basic') { size *= 2.0;
+                            starColor = `rgba(255, 235, 120, 1)`; } 
                         else if (star.tier === 'supernova') {
                             const pulse = 1.2 + Math.sin(time * 6) * 0.4;
                             size *= 2.8 * pulse; starColor = `rgba(255, 51, 102, 1)`; auraColor = `rgba(255, 51, 102, 0.35)`;
                         } else if (star.tier === 'constellation') {
-                            size *= 3.8; starColor = `rgba(0, 255, 255, 1)`; auraColor = `rgba(0, 255, 255, 0.4)`;
+                            size *= 3.8;
+                            starColor = `rgba(0, 255, 255, 1)`; auraColor = `rgba(0, 255, 255, 0.4)`;
                         }
                     }
 
@@ -659,7 +617,6 @@
                         size *= hoverPulse;
                     }
 
-                    // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
                     if (focusedStarIndex === i) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
@@ -671,22 +628,26 @@
                     if (focusedStarIndex === i && focusedStarHovered) {
                         auraColor = `rgba(255, 215, 0, 0.9)`;
                     }
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
+                    ctx.beginPath();
+                    ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
                     ctx.fillStyle = auraColor; ctx.fill();
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                    ctx.beginPath();
+                    ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
                     ctx.fillStyle = starColor; ctx.fill();
                 }
             }
 
-            // Летящие частицы
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
-                    const p = particles[i]; p.z -= flySpeed;
-                    if (p.z <= 0) { p.z = 2000; p.x = (Math.random() - 0.5) * 2000; p.y = (Math.random() - 0.5) * 2000; }
+                    const p = particles[i];
+                    p.z -= flySpeed;
+                    if (p.z <= 0) { p.z = 2000; p.x = (Math.random() - 0.5) * 2000;
+                        p.y = (Math.random() - 0.5) * 2000; }
                     const pFactor = 800 / (p.z + 1);
                     const pScreenX = cx + p.x * pFactor; const pScreenY = cy + p.y * pFactor;
                     if (pScreenX >= 0 && pScreenX <= canvas.width && pScreenY >= 0 && pScreenY <= canvas.height) {
-                        const pSize = (1 - p.z / 2000) * 4.5; const alpha = (1 - p.z / 2000) * 0.6;
+                        const pSize = (1 - p.z / 2000) * 4.5;
+                        const alpha = (1 - p.z / 2000) * 0.6;
                         ctx.beginPath(); ctx.moveTo(pScreenX, pScreenY);
                         ctx.lineTo(cx + p.x * (800 / (p.z + flySpeed * 2.5 + 1)), cy + p.y * (800 / (p.z + flySpeed * 2.5 + 1)));
                         ctx.strokeStyle = `rgba(255, 220, 160, ${alpha})`; ctx.lineWidth = pSize * 0.4; ctx.stroke();
@@ -695,6 +656,7 @@
             }
             requestAnimationFrame(animate);
         }
+        let startTime = Date.now();
         animate();
     </script>
 </body>
