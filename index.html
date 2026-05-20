@@ -277,7 +277,7 @@
         let selectedPriceDoge = 7;
         let activeClickedStarNumber = null;
         // Target focus index for camera mechanics tracking
-        let focusedStarIndex = null;
+        let focusedStarIndex = 5;
         let targetXOffset = 0;
         let targetYOffset = 0;
         let currentXOffset = 0;
@@ -314,6 +314,17 @@
                 screenY: 0,
                 currentSize: 0
             });
+        }
+
+        // Позиционируем первые 11 звезд в пределах экрана в рандомном порядке при запуске
+        const initPaddingX = canvas.width * 0.15;
+        const initPaddingY = canvas.height * 0.15;
+        for (let i = 0; i <= 10; i++) {
+            const currentStar = stars[i];
+            const sX = initPaddingX + Math.random() * (canvas.width - initPaddingX * 2);
+            const sY = initPaddingY + Math.random() * (canvas.height - initPaddingY * 2);
+            currentStar.x = (sX - cx) * (currentStar.z + 1) / 800;
+            currentStar.y = (sY - cy) * (currentStar.z + 1) / 800;
         }
 
         async function loadPurchasedStars() {
@@ -395,18 +406,23 @@
             const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
 
             // Меняем физическое положение выбранной звезды и 5 соседей в обе стороны,
-            // чтобы они выстроились горизонтально на экране пользователя.
+            // чтобы они расположились в пределах экрана в рандомном порядке.
             const startId = Math.max(0, idVal - 5);
             const endId = Math.min(numStars - 1, idVal + 5);
             
             for (let i = startId; i <= endId; i++) {
                 const currentStar = stars[i];
-                const offsetIdx = i - idVal; // смещение (-5 ... +5) относительно центральной
-                const neighborScreenX = randomScreenX + offsetIdx * 45; // шаг в 45 пикселей по горизонтали
-                const neighborScreenY = randomScreenY;
+                let sX, sY;
+                if (i === idVal) {
+                    sX = randomScreenX;
+                    sY = randomScreenY;
+                } else {
+                    sX = paddingX + Math.random() * (canvas.width - paddingX * 2);
+                    sY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+                }
                 
-                currentStar.x = (neighborScreenX - cx) * (currentStar.z + 1) / 800;
-                currentStar.y = (neighborScreenY - cy) * (currentStar.z + 1) / 800;
+                currentStar.x = (sX - cx) * (currentStar.z + 1) / 800;
+                currentStar.y = (sY - cy) * (currentStar.z + 1) / 800;
             }
             
             focusedStarIndex = idVal;
@@ -474,7 +490,10 @@
                 }
             }
 
-            for (let i = 0; i < numStars; i++) {
+            let activeFocus = focusedStarIndex !== null ? focusedStarIndex : 5;
+            let startRange = Math.max(0, activeFocus - 5);
+            let endRange = Math.min(numStars - 1, activeFocus + 5);
+            for (let i = startRange; i <= endRange; i++) {
                 const star = stars[i];
                 if (!star.isBought) continue;
                 const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
@@ -483,7 +502,6 @@
             }
 
             if (foundStar) {
-                focusedStarIndex = null; // Отменяем фокус поиска, если пользователь водит мышкой
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
                 tooltip.className = foundStar.tier;
@@ -516,15 +534,14 @@
                     canvas.style.cursor = 'crosshair';
                 }
             } else { 
-                if (focusedStarIndex === null) {
-                    hoveredStar = null;
+                hoveredStar = null;
+                if (!focusedStarHovered) {
                     tooltip.style.display = 'none'; 
                 }
             }
         });
         canvas.addEventListener('click', (e) => {
             if (hoveredStar) return;
-            focusedStarIndex = null;
             tooltip.style.display = 'none';
 
             const rect = canvas.getBoundingClientRect();
@@ -533,7 +550,10 @@
             let closestStarIdx = 0;
             let minDist = Infinity;
 
-            for (let i = 0; i < numStars; i++) {
+            let activeFocusClick = focusedStarIndex !== null ? focusedStarIndex : 5;
+            let startRangeClick = Math.max(0, activeFocusClick - 5);
+            let endRangeClick = Math.min(numStars - 1, activeFocusClick + 5);
+            for (let i = startRangeClick; i <= endRangeClick; i++) {
                 if (stars[i].isBought) continue;
                 const dx = mouseX - stars[i].screenX;
                 const dy = mouseY - stars[i].screenY;
@@ -541,6 +561,7 @@
                 if (dist < minDist) { minDist = dist; closestStarIdx = i; }
             }
 
+            focusedStarIndex = closestStarIdx;
             activeClickedStarNumber = closestStarIdx;
             const cStar = stars[closestStarIdx];
             document.getElementById('modal-title').innerText = `Claim Star #${closestStarIdx} (${Math.round(cStar.x)}, ${Math.round(cStar.y)})`;
@@ -607,15 +628,15 @@
                 currentXOffset += (targetXOffset - currentXOffset) * 0.08;
                 currentYOffset += (targetYOffset - currentYOffset) * 0.08;
             } else {
-                // Если фокуса поиска нет, камера медленно возвращается в центр
                 currentXOffset += (0 - currentXOffset) * 0.02;
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
+            let activeFocusAnimate = focusedStarIndex !== null ? focusedStarIndex : 5;
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-                // Оптимизация производительности: рендерим первые 5000 фоновых звезд + только те, которые куплены или входят в диапазон 11 звезд вокруг выбранной
-                if (i >= 5000 && !star.isBought && (focusedStarIndex === null || Math.abs(i - focusedStarIndex) > 5)) continue;
+                // Рендерим строго 11 звезд (выбранную и по 5 соседей в обе стороны по порядку)
+                if (i < activeFocusAnimate - 5 || i > activeFocusAnimate + 5) continue;
                 // STATIC STARS
                // вращение отключено — звезды остаются неподвижными
 
