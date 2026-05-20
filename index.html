@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Подключаем стабильную библиотеку Supabase -->
+    <script src="https://jsdelivr.net"></script>
     <style>
         body {
             margin: 0;
@@ -49,6 +50,7 @@
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
         }
 
+        /* Search Bar Panel Styling */
         .search-container {
             position: absolute;
             top: 20px;
@@ -69,7 +71,7 @@
             color: #fff;
             padding: 5px 15px;
             font-size: 13px;
-            width: 160px;
+            width: 140px;
         }
         .search-btn {
             background: #ffd700;
@@ -86,6 +88,7 @@
             background: #fff;
         }
 
+        /* Hover Tooltip Card */
         #star-tooltip {
             position: absolute;
             padding: 15px;
@@ -110,6 +113,7 @@
         .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
         .tooltip-meta { color: #888; font-size: 10px; margin-top: 8px; word-break: break-all; }
 
+        /* Neon Payment Modal */
         #payment-modal {
             position: absolute;
             top: 50%;
@@ -207,8 +211,9 @@
 </head>
 <body>
 
+    <!-- Search Input Interface Structure -->
     <div class="search-container">
-        <input type="number" id="search-input" class="search-input" placeholder="Star ID (e.g. 999999)" min="0">
+        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-4999)" min="0" max="4999">
         <button id="search-btn" class="search-btn">SEARCH</button>
     </div>
 
@@ -252,10 +257,8 @@
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
         
         let supabase = null;
-        if (typeof createClient !== 'undefined') {
-            supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } else if (typeof window['@supabase/supabase-js'] !== 'undefined') {
-            supabase = window['@supabase/supabase-js'].createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        if (typeof Supabase !== 'undefined') {
+            supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
         const canvas = document.getElementById('starfield');
@@ -268,6 +271,8 @@
         const tierBoxes = document.querySelectorAll('.tier-box');
         const ownerInput = document.getElementById('star-owner');
         const msgInput = document.getElementById('star-msg');
+        
+        // Search selectors
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
 
@@ -276,6 +281,7 @@
         let selectedPriceDoge = 7;
         let activeClickedStarNumber = null;
         
+        // Target focus index for camera mechanics tracking
         let focusedStarIndex = null;
         let targetXOffset = 0;
         let targetYOffset = 0;
@@ -293,51 +299,18 @@
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
-        // ==========================================
-        // ИЗМЕНЕНИЯ: ОПТИМИЗИРОВАННЫЙ ДВИЖОК ЗВЕЗД
-        // ==========================================
-        const numStaticBackgroundStars = 1500; 
-        const backgroundStars = [];
-        const dynamicStars = new Map(); // Карта для динамических (купленных/найденных) звезд
+        // 1. Инициализация звезд
+        const numStars = 5000;
+        const stars = [];
+        const rotateSpeed = 0.3;
 
-        // Фоновый «шум» далекого космоса (не нагружает систему)
-        for (let i = 0; i < numStaticBackgroundStars; i++) {
-            backgroundStars.push({
-                x: (Math.random() - 0.5) * 3400,
-                y: (Math.random() - 0.5) * 3400,
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
+                x: (Math.random() - 0.5) * 3000,
+                y: (Math.random() - 0.5) * 3000,
                 z: Math.random() * 3000,
                 phase: Math.random() * Math.PI * 2,
                 flickerSpeed: 0.02 + Math.random() * 0.05,
-                sizeFactor: 0.5 + Math.random() * 0.8
-            });
-        }
-
-        // Вычисление неизменных координат на лету по алгоритму синусов (для бесконечного числа ID)
-        function generateDeterministicCoords(id) {
-            let xSeed = Math.sin(id * 12.9898) * 43758.5453;
-            let ySeed = Math.sin(id * 78.233) * 43758.5453;
-            let zSeed = Math.sin(id * 45.164) * 43758.5453;
-            
-            return {
-                x: (xSeed - Math.floor(xSeed) - 0.5) * 2500,
-                y: (ySeed - Math.floor(ySeed) - 0.5) * 2500,
-                z: (zSeed - Math.floor(zSeed)) * 2500
-            };
-        }
-
-        // Создание или извлечение структуры динамической звезды из оперативной памяти
-        function getOrCreateDynamicStar(id) {
-            if (dynamicStars.has(id)) {
-                return dynamicStars.get(id);
-            }
-            const coords = generateDeterministicCoords(id);
-            const star = {
-                id: id,
-                x: coords.x,
-                y: coords.y,
-                z: coords.z,
-                phase: (id * 0.1) % (Math.PI * 2),
-                flickerSpeed: 0.03,
                 isBought: false,
                 tier: 'basic',
                 user_name: '',
@@ -346,52 +319,33 @@
                 screenX: 0,
                 screenY: 0,
                 currentSize: 0
-            };
-            dynamicStars.set(id, star);
-            return star;
+            });
         }
 
-        // Очистка некупленных звезд, если фокус камеры изменился
-        function cleanupUnusedDynamicStars() {
-            for (let [id, star] of dynamicStars.entries()) {
-                if (!star.isBought && id !== focusedStarIndex) {
-                    dynamicStars.delete(id);
-                }
-            }
-        }
-
-        // Загрузка последних 100 купленных звезд из базы данных при старте
-        async function loadRecentPurchasedStars() {
+        async function loadPurchasedStars() {
             if (!supabase) return;
             try {
-                const { data, error } = await supabase
-                    .from('purchased_stars')
-                    .select('star_number, user_name, wallet_address, tier, message')
-                    .order('star_number', { ascending: false })
-                    .limit(100);
-                    
+                const { data, error } = await supabase.from('purchased_stars').select('star_number, user_name, wallet_address, tier, message');
                 if (!error && data) {
                     data.forEach(row => {
-                        const id = parseInt(row.star_number);
-                        if (!isNaN(id)) {
-                            const star = getOrCreateDynamicStar(id);
-                            star.isBought = true;
-                            star.user_name = row.user_name;
-                            star.wallet_address = row.wallet_address;
-                            star.tier = row.tier || 'basic';
-                            star.message = row.message || 'To the moon! 🚀';
+                        const idx = row.star_number;
+                        if (idx !== null && idx < numStars) {
+                            stars[idx].isBought = true;
+                            stars[idx].user_name = row.user_name;
+                            stars[idx].wallet_address = row.wallet_address;
+                            stars[idx].tier = row.tier || 'basic';
+                            stars[idx].message = row.message || 'To the moon! 🚀';
                         }
                     });
                 }
             } catch (err) {
-                console.error("Supabase initial load failed:", err);
+                console.error("Supabase data mapping failed:", err);
             }
         }
-        loadRecentPurchasedStars();
-        // ==========================================
+        loadPurchasedStars();
 
-        // --- ЛЕТЯЩИЕ ЧАСТИЦЫ ЭФФЕКТА СКОРОСТИ ---
-        const numParticles = 80;
+        // 2. Частицы
+        const numParticles = 100;
         const particles = [];
         const flySpeed = 5;
         for (let i = 0; i < numParticles; i++) {
@@ -419,7 +373,7 @@
             } else { isPlaying = false; audioBtn.innerText = "ENABLE AMBIENT"; }
         });
 
-        // --- ИНТЕРФЕЙС И ПОИСК ---
+        // --- INTERACTIVITY HOVER & CLICK & SEARCH ---
         let hoveredStar = null;
         let globalZOffset = 5000; const targetZOffset = 0; const flyInSpeed = 0.02;
 
@@ -432,41 +386,23 @@
             });
         });
 
-        searchBtn.addEventListener('click', async () => {
+        // Search engine button handler mechanics
+        searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
-            if (isNaN(idVal) || idVal < 0) {
-                alert("Please enter a valid Star ID.");
+            if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
+                alert("Please enter a valid Star ID from 0 to 4999.");
                 return;
             }
 
-            cleanupUnusedDynamicStars();
-            const targetStar = getOrCreateDynamicStar(idVal);
+            const targetStar = stars[idVal];
             
+            // Смещаем камеру, центрируя галактику на этой звезде
             focusedStarIndex = idVal;
             targetXOffset = -targetStar.x;
             targetYOffset = -targetStar.y;
 
-            if (supabase && !targetStar.isBought) {
-                try {
-                    const { data, error } = await supabase
-                        .from('purchased_stars')
-                        .select('user_name, wallet_address, tier, message')
-                        .eq('star_number', idVal)
-                        .maybeSingle();
-
-                    if (!error && data) {
-                        targetStar.isBought = true;
-                        targetStar.user_name = data.user_name;
-                        targetStar.wallet_address = data.wallet_address;
-                        targetStar.tier = data.tier || 'basic';
-                        targetStar.message = data.message || 'To the moon! 🚀';
-                    }
-                } catch (e) {
-                    console.error("Single star DB fetch error:", e);
-                }
-            }
-
             if (targetStar.isBought) {
+                // Если звезда куплена, принудительно открываем тултип по центру
                 setTimeout(() => {
                     tooltip.style.display = 'block';
                     tooltip.style.left = `${cx + 20}px`;
@@ -483,15 +419,14 @@
                     `;
                 }, 400);
             } else {
+                // Если свободна — убираем тултип и предлагаем купить её
                 tooltip.style.display = 'none';
-                setTimeout(() => {
-                    if (confirm(`Star #${idVal} is FREE! Would you like to buy it right now?`)) {
-                        activeClickedStarNumber = idVal;
-                        document.getElementById('modal-title').innerText = `Claim Star #${idVal}`;
-                        modal.style.display = 'block';
-                        setTimeout(() => modal.classList.add('active'), 10);
-                    }
-                }, 500);
+                if (confirm(`Star #${idVal} is FREE! Would you like to buy it right now?`)) {
+                    activeClickedStarNumber = idVal;
+                    document.getElementById('modal-title').innerText = `Claim Star #${idVal}`;
+                    modal.style.display = 'block';
+                    setTimeout(() => modal.classList.add('active'), 10);
+                }
             }
         });
 
@@ -502,20 +437,19 @@
             let foundStar = null;
             focusedStarHovered = false;
 
-            if (focusedStarIndex !== null && dynamicStars.has(focusedStarIndex)) {
-                const focusedStar = dynamicStars.get(focusedStarIndex);
+            if (focusedStarIndex !== null) {
+                const focusedStar = stars[focusedStarIndex];
                 const dxFocus = mouseX - focusedStar.screenX;
                 const dyFocus = mouseY - focusedStar.screenY;
                 const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
 
                 if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
                     focusedStarHovered = true;
-                    canvas.style.cursor = 'pointer';
                 }
             }
 
-            // Обход динамической структуры карт звезд
-            for (let [id, star] of dynamicStars.entries()) {
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
                 if (!star.isBought) continue;
                 const dx = mouseX - star.screenX; 
                 const dy = mouseY - star.screenY;
@@ -523,14 +457,22 @@
                 if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; break; }
             }
 
+            // Исправленное переключение состояния курсора мыши
+            if (focusedStarHovered || foundStar) {
+                canvas.style.cursor = 'pointer';
+            } else {
+                canvas.style.cursor = 'crosshair';
+            }
+
             if (foundStar) {
-                focusedStarIndex = null; 
+                focusedStarIndex = null; // Отменяем фокус поиска, если пользователь водит мышкой по купленным звездам
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
                 tooltip.style.left = `${e.clientX + 15}px`;
                 tooltip.style.top = `${e.clientY + 15}px`;
                 tooltip.className = foundStar.tier;
                 
+                // Исправлено: заменено targetStar на foundStar, чтобы предотвратить падение скрипта
                 let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
                 tooltip.innerHTML = `
                     <div class="tooltip-type">${label}</div>
@@ -538,7 +480,6 @@
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                     <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
                 `;
-                if (!focusedStarHovered) canvas.style.cursor = 'crosshair';
             } else { 
                 if (focusedStarIndex === null) {
                     hoveredStar = null; 
@@ -549,19 +490,25 @@
 
         canvas.addEventListener('click', (e) => {
             if (hoveredStar) return;
-            
-            cleanupUnusedDynamicStars();
+            focusedStarIndex = null;
             tooltip.style.display = 'none';
 
-            const randomId = Math.floor(5000 + Math.random() * 995000);
-            focusedStarIndex = randomId;
-            
-            const targetStar = getOrCreateDynamicStar(randomId);
-            targetXOffset = -targetStar.x;
-            targetYOffset = -targetStar.y;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            let closestStarIdx = 0;
+            let minDist = Infinity;
 
-            activeClickedStarNumber = randomId;
-            document.getElementById('modal-title').innerText = `Claim Star #${randomId}`;
+            for (let i = 0; i < numStars; i++) {
+                if (stars[i].isBought) continue;
+                const dx = mouseX - stars[i].screenX;
+                const dy = mouseY - stars[i].screenY;
+                const dist = dx*dx + dy*dy;
+                if (dist < minDist) { minDist = dist; closestStarIdx = i; }
+            }
+
+            activeClickedStarNumber = closestStarIdx;
+            document.getElementById('modal-title').innerText = `Claim Star #${closestStarIdx}`;
             modal.style.display = 'block';
             setTimeout(() => modal.classList.add('active'), 10);
         });
@@ -569,9 +516,9 @@
         modalClose.addEventListener('click', () => {
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
-            cleanupUnusedDynamicStars();
         });
 
+        // ОТПРАВКА ДАННЫХ В SUPABASE
         payBtn.addEventListener('click', async () => {
             const userNameVal = ownerInput.value.trim() || "Anonymous";
             const msgVal = msgInput.value.trim() || "To the moon! 🚀";
@@ -601,12 +548,11 @@
                 }
             } catch (err) { console.error("Database sync issue:", err.message); }
 
-            const star = getOrCreateDynamicStar(activeClickedStarNumber);
-            star.isBought = true;
-            star.user_name = userNameVal;
-            star.wallet_address = userWalletAddress;
-            star.tier = selectedTier;
-            star.message = msgVal;
+            stars[activeClickedStarNumber].isBought = true;
+            stars[activeClickedStarNumber].user_name = userNameVal;
+            stars[activeClickedStarNumber].wallet_address = userWalletAddress;
+            stars[activeClickedStarNumber].tier = selectedTier;
+            stars[activeClickedStarNumber].message = msgVal;
 
             alert(`Success! Star #${activeClickedStarNumber} is registered.`);
             
@@ -617,7 +563,7 @@
             payBtn.innerText = "Proceed to Web3 Payment";
         });
 
-        // --- RENDER PIPELINE LOOP ---
+        // 3. Render Pipeline Loop
         let startTime = Date.now();
         function animate() {
             ctx.fillStyle = '#000002'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -625,33 +571,20 @@
 
             if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
 
+            // Плавная интерполяция смещения камеры к выбранной звезде
             if (focusedStarIndex !== null) {
                 currentXOffset += (targetXOffset - currentXOffset) * 0.08;
                 currentYOffset += (targetYOffset - currentYOffset) * 0.08;
             } else {
+                // Если фокуса поиска нет, камера медленно возвращается в центр
                 currentXOffset += (0 - currentXOffset) * 0.02;
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
-            // Отрисовка фоновых частиц космоса
-            for (let i = 0; i < numStaticBackgroundStars; i++) {
-                const bp = backgroundStars[i];
-                const factor = 800 / (bp.z + globalZOffset + 1);
-                const sx = cx + bp.x * factor;
-                const sy = cy + bp.y * factor;
-
-                if (sx >= 0 && sx <= canvas.width && sy >= 0 && sy <= canvas.height) {
-                    bp.phase += bp.flickerSpeed;
-                    const brightness = 0.3 + Math.sin(bp.phase) * 0.4;
-                    ctx.beginPath();
-                    ctx.arc(sx, sy, bp.sizeFactor * (0.8 + brightness * 0.2), 0, Math.PI * 2);
-                    ctx.fillStyle = `rgba(255, 240, 200, ${brightness * 0.4})`;
-                    ctx.fill();
-                }
-            }
-
-            // Отрисовка динамических объектов звезд из карты памяти
-            for (let [id, star] of dynamicStars.entries()) {
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                
+                // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции звезд
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
                 star.screenY = cy + (star.y + currentYOffset) * factor;
@@ -676,11 +609,13 @@
                     }
 
                     star.currentSize = size;
-                    if (focusedStarIndex === id && focusedStarHovered) {
-                        size *= (2.4 + Math.sin(time * 10) * 0.3);
+                    if (focusedStarIndex === i && focusedStarHovered) {
+                        const hoverPulse = 2.4 + Math.sin(time * 10) * 0.3;
+                        size *= hoverPulse;
                     }
 
-                    if (focusedStarIndex === id) {
+                    // Рисуем яркий прицел вокруг сфокусированной через поиск звезды
+                    if (focusedStarIndex === i) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
                         ctx.strokeStyle = '#ffd700';
@@ -688,7 +623,7 @@
                         ctx.stroke();
                     }
 
-                    if (focusedStarIndex === id && focusedStarHovered) {
+                    if (focusedStarIndex === i && focusedStarHovered) {
                         auraColor = `rgba(255, 215, 0, 0.9)`;
                     }
                     ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
@@ -698,7 +633,7 @@
                 }
             }
 
-            // Летящие частицы эффекта скорости
+            // Летящие частицы (Остаются независимыми от смещения камеры)
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i]; p.z -= flySpeed;
