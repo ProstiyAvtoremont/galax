@@ -1,352 +1,305 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DOGE Starfield Space — Buy Your Own Star</title>
-    <!-- Подключаем стабильную библиотеку Supabase -->
-    <script src="https://jsdelivr.net"></script>
+    <title>Space Grid Star Map</title>
+    <!-- Подключение Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #010105;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            color: #fff;
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #000002; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            color: #fff; 
+            user-select: none;
         }
-        canvas {
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
-            cursor: crosshair;
+        canvas { 
+            display: block; 
+            width: 100vw; 
+            height: 100vh; 
         }
         
-        .controls-container {
-            position: absolute;
-            bottom: 25px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 15px;
-            z-index: 10;
+        /* Панель управления поиском */
+        .ui-panel { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            background: rgba(5, 5, 15, 0.85); 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #334; 
+            backdrop-filter: blur(10px); 
+            z-index: 10; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
-
-        .ui-btn {
-            padding: 12px 24px;
-            background: rgba(255, 215, 0, 0.08);
-            border: 1px solid rgba(255, 215, 0, 0.4);
-            border-radius: 30px;
-            color: #ffd700;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(8px);
-        }
-        .ui-btn:hover {
-            background: rgba(255, 215, 0, 0.25);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-        }
-
-        /* NEW: Search Bar Panel Styling */
-        .search-container {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 15;
-            display: flex;
-            gap: 10px;
-            background: rgba(5, 5, 15, 0.6);
-            padding: 8px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 215, 0, 0.2);
-            backdrop-filter: blur(10px);
-        }
-        .search-input {
-            background: transparent;
-            border: none;
+        .ui-panel input { 
+            background: #112; 
+            border: 1px solid #445; 
+            color: #fff; 
+            padding: 10px; 
+            border-radius: 4px; 
+            margin-right: 8px; 
+            width: 180px; 
             outline: none;
-            color: #fff;
-            padding: 5px 15px;
-            font-size: 13px;
-            width: 140px;
         }
-        .search-btn {
-            background: #ffd700;
-            border: none;
-            color: #000;
-            padding: 6px 15px;
-            border-radius: 15px;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
+        .ui-panel input:focus {
+            border-color: #ffd700;
+        }
+        .ui-panel button { 
+            background: #ffd700; 
+            border: none; 
+            color: #000; 
+            padding: 10px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
             transition: background 0.2s;
         }
-        .search-btn:hover {
-            background: #fff;
+        .ui-panel button:hover { 
+            background: #ffe866; 
         }
-
-        /* Hover Tooltip Card */
-        #star-tooltip {
-            position: absolute;
-            padding: 15px;
-            background: rgba(5, 5, 15, 0.9);
-            border: 1px solid #ffd700;
-            border-radius: 12px;
-            color: #fff;
-            font-size: 13px;
-            pointer-events: none;
-            display: none;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
-            min-width: 220px;
-        }
-        #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3); }
-        #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3); }
         
-        .tooltip-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #ffd700; }
-        #star-tooltip.supernova .tooltip-title { color: #ff3366; }
-        #star-tooltip.constellation .tooltip-title { color: #00ffff; }
-        .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
-        .tooltip-meta { color: #888; font-size: 10px; margin-top: 8px; word-break: break-all; }
-
-        /* Neon Payment Modal */
-        #payment-modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.9);
-            background: rgba(7, 7, 20, 0.95);
-            border: 1px solid #ffd700;
-            box-shadow: 0 0 40px rgba(255, 215, 0, 0.25);
-            border-radius: 20px;
-            padding: 25px;
-            width: 360px;
-            text-align: center;
-            backdrop-filter: blur(15px);
-            z-index: 200;
-            display: none;
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        #payment-modal.active {
-            display: block;
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
-        }
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            cursor: pointer;
-            color: #aaa;
-            font-size: 20px;
-        }
-
-        .tier-box {
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 10px;
-            margin: 8px 0;
-            cursor: pointer;
+        /* Кнопка эмбиента */
+        #audioBtn { 
+            position: absolute; 
+            top: 20px; 
+            right: 20px; 
+            background: rgba(5, 5, 15, 0.85); 
+            border: 1px solid #445; 
+            color: #fff; 
+            padding: 10px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            z-index: 10; 
+            font-weight: bold;
+            backdrop-filter: blur(10px);
             transition: all 0.2s;
-            background: rgba(255,255,255,0.02);
-            text-align: left;
         }
-        .tier-box.selected {
+        #audioBtn:hover {
+            background: rgba(20, 20, 40, 0.9);
             border-color: #ffd700;
-            background: rgba(255, 215, 0, 0.08);
         }
+        
+        /* Всплывающие подсказки (Тултипы) */
+        #tooltip { 
+            position: absolute; 
+            display: none; 
+            background: rgba(2, 2, 8, 0.95); 
+            border: 1px solid #557; 
+            padding: 15px; 
+            border-radius: 8px; 
+            pointer-events: none; 
+            z-index: 20; 
+            min-width: 200px; 
+            max-width: 280px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8); 
+        }
+        #tooltip.basic { border-color: #ffd700; }
+        #tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 15px rgba(255, 51, 102, 0.4); }
+        #tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 15px rgba(0, 255, 255, 0.4); }
+        
+        .tooltip-type { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; opacity: 0.7; }
+        .tooltip-title { font-size: 16px; font-weight: bold; margin-bottom: 6px; color: #fff; }
 
-        .input-group {
-            text-align: left;
-            margin-top: 12px;
+        /* Модальное окно покупки */
+        .modal { 
+            position: fixed; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%) scale(0.9); 
+            display: none; 
+            background: rgba(10, 10, 25, 0.95); 
+            border: 2px solid #ffd700; 
+            padding: 30px; 
+            border-radius: 12px; 
+            z-index: 30; 
+            width: 340px; 
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.25); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0; 
+            backdrop-filter: blur(10px);
         }
-        .input-group label {
+        .modal.active { 
+            transform: translate(-50%, -50%) scale(1); 
+            opacity: 1; 
+        }
+        .modal h3 { 
+            margin-top: 0; 
+            color: #ffd700; 
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .modal label {
             display: block;
-            font-size: 11px;
-            color: #ffd700;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 5px;
         }
-        .input-field {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 11px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 13px;
+        .modal input { 
+            width: 100%; 
+            box-sizing: border-box; 
+            background: #112; 
+            border: 1px solid #445; 
+            color: #fff; 
+            padding: 12px; 
+            border-radius: 6px; 
+            margin-bottom: 18px; 
             outline: none;
         }
-        .input-field:focus {
-            border-color: #ffd700;
+        .modal input:focus { border-color: #ffd700; }
+        
+        /* Выбор тиров в модалке */
+        .tier-container { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 20px; 
         }
-
-        .pay-btn {
-            width: 100%;
-            padding: 12px;
-            background: #ffd700;
-            border: none;
-            border-radius: 25px;
-            color: #000;
-            font-weight: bold;
-            font-size: 14px;
-            margin-top: 18px;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+        .tier-box { 
+            flex: 1; 
+            background: #112; 
+            border: 1px solid #445; 
+            padding: 10px 5px; 
+            border-radius: 6px; 
+            text-align: center; 
+            cursor: pointer; 
+            font-size: 11px; 
+            transition: all 0.2s;
         }
-        .pay-btn:disabled {
-            background: #555;
-            color: #888;
-            cursor: not-allowed;
-            box-shadow: none;
+        .tier-box.selected { 
+            border-color: #ffd700; 
+            background: rgba(255, 215, 0, 0.15); 
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
         }
+        
+        .modal-buttons { 
+            display: flex; 
+            gap: 12px; 
+        }
+        .modal-buttons button { 
+            flex: 1; 
+            padding: 12px; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: all 0.2s;
+        }
+        .btn-pay { background: #ffd700; border: none; color: #000; }
+        .btn-pay:hover { background: #ffe866; }
+        .btn-pay:disabled { background: #555; color: #aaa; cursor: not-allowed; }
+        .btn-close { background: #223; border: 1px solid #445; color: #fff; }
+        .btn-close:hover { background: #334; }
     </style>
 </head>
 <body>
 
-    <!-- NEW: Search Input Interface Structure -->
-    <div class="search-container">
-        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
-        <button id="search-btn" class="search-btn">SEARCH</button>
-    </div>
-
     <canvas id="starfield"></canvas>
     
-    <div class="controls-container">
-        <button class="ui-btn" id="audio-btn">ENABLE AMBIENT</button>
+    <div class="ui-panel">
+        <input type="number" id="searchInput" placeholder="ID звезды (0-1999999)" min="0" max="1999999">
+        <button id="searchBtn">ПОИСК ЗВЕЗДЫ</button>
     </div>
-
-    <div id="star-tooltip"></div>
-
-    <div id="payment-modal">
-        <span class="modal-close" id="modal-close">&times;</span>
-        <h3 id="modal-title" style="color: #ffd700; margin-top: 0; margin-bottom: 5px;">Claim This Star</h3>
-        <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">Immortalize your name on the galaxy map via DOGE.</p>
+    
+    <button id="audioBtn">ENABLE AMBIENT</button>
+    
+    <div id="tooltip"></div>
+    
+    <div id="modal" class="modal">
+        <h3 id="modal-title">Claim Star</h3>
+        <label>Имя владельца:</label>
+        <input type="text" id="ownerInput" placeholder="Anonymous">
         
-        <div class="tier-box selected" data-tier="basic" data-price="7">
-            <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star (~7 DOGE)</div>
+        <label>Послание в космос:</label>
+        <input type="text" id="msgInput" placeholder="To the moon! 🚀">
+        
+        <label>Выберите класс звезды:</label>
+        <div class="tier-container">
+            <div class="tier-box selected" data-tier="basic" data-price="100">⭐ Basic<br>100 DOGE</div>
+            <div class="tier-box" data-tier="supernova" data-price="500">⚡ Supernova<br>500 DOGE</div>
+            <div class="tier-box" data-tier="constellation" data-price="1000">🌌 Constell.<br>1000 DOGE</div>
         </div>
-        <div class="tier-box" data-tier="supernova" data-price="28">
-            <div style="font-weight:bold; color:#ff3366;">✨ Supernova (~28 DOGE)</div>
+        
+        <div class="modal-buttons">
+            <button class="btn-pay" id="payBtn">Proceed to Web3 Payment</button>
+            <button class="btn-close" id="modalClose">Cancel</button>
         </div>
-        <div class="tier-box" data-tier="constellation" data-price="250">
-            <div style="font-weight:bold; color:#00ffff;">🌌 Constellation (~250 DOGE)</div>
-        </div>
-
-        <div class="input-group">
-            <label for="star-owner">X (Twitter) Handle / Name</label>
-            <input type="text" id="star-owner" class="input-field" placeholder="@elonmusk" maxlength="30">
-        </div>
-        <div class="input-group">
-            <label for="star-msg">Your Message</label>
-            <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="60">
-        </div>
-
-        <button class="pay-btn" id="pay-btn">Proceed to Web3 Payment</button>
     </div>
 
     <script>
-        const SUPABASE_URL = "https://supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
+        // --- CONFIG & INITIALIZATION ---
+        const SUPABASE_URL = "https://your-supabase-url.supabase.co";
+        const SUPABASE_KEY = "your-anon-key";
+        const MERCHANT_WALLET = "0xYourMerchantWalletAddressHere";
         
         let supabase = null;
-        if (typeof Supabase !== 'undefined') {
-            supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
+        try {
+            if (typeof window.supabase !== 'undefined') {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch (e) { console.warn("Supabase initialization skipped or configuration missing."); }
 
         const canvas = document.getElementById('starfield');
         const ctx = canvas.getContext('2d');
-        const audioBtn = document.getElementById('audio-btn');
-        const tooltip = document.getElementById('star-tooltip');
-        const modal = document.getElementById('payment-modal');
-        const modalClose = document.getElementById('modal-close');
-        const payBtn = document.getElementById('pay-btn');
-        const tierBoxes = document.querySelectorAll('.tier-box');
-        const ownerInput = document.getElementById('star-owner');
-        const msgInput = document.getElementById('star-msg');
         
-        // Search selectors
-        const searchInput = document.getElementById('search-input');
-        const searchBtn = document.getElementById('search-btn');
-
-        const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
-        let selectedTier = "basic";
-        let selectedPriceDoge = 7;
-        let activeClickedStarNumber = null;
-        
-        // Target focus index for camera mechanics tracking
-        let focusedStarIndex = null;
-        let targetXOffset = 0;
-        let targetYOffset = 0;
-        let currentXOffset = 0;
-        let currentYOffset = 0;
-        let focusedStarHovered = false;
-
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            cx = canvas.width / 2;
+            cy = canvas.height / 2;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-        // 1. Инициализация звезд
-        const numStars = 2000000;
+        // DOM элементы
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const audioBtn = document.getElementById('audioBtn');
+        const tooltip = document.getElementById('tooltip');
+        const modal = document.getElementById('modal');
+        const modalClose = document.getElementById('modalClose');
+        const ownerInput = document.getElementById('ownerInput');
+        const msgInput = document.getElementById('msgInput');
+        const payBtn = document.getElementById('payBtn');
+        const tierBoxes = document.querySelectorAll('.tier-box');
+
+        // Глобальное состояние карты звездного неба
+        const numStars = 2000000; 
         const stars = [];
-        const rotateSpeed = 0.3;
+        const numParticles = 200;
+        const particles = [];
+        
+        let selectedTier = 'basic';
+        let selectedPriceDoge = 100;
+        let activeClickedStarNumber = null;
+        
+        let focusedStarIndex = null;
+        let focusedStarHovered = false;
+        let targetXOffset = 0, targetYOffset = 0;
+        let currentXOffset = 0, currentYOffset = 0;
 
+        // Генерация массива звезд (базовые позиции)
         for (let i = 0; i < numStars; i++) {
             stars.push({
-                x: (Math.random() - 0.5) * 3000,
-                y: (Math.random() - 0.5) * 3000,
-                z: Math.random() * 3000,
+                x: (Math.random() - 0.5) * 3500,
+                y: (Math.random() - 0.5) * 3500,
+                z: Math.random() * 2000,
                 phase: Math.random() * Math.PI * 2,
-                flickerSpeed: 0.02 + Math.random() * 0.05,
+                flickerSpeed: 0.01 + Math.random() * 0.04,
                 isBought: false,
                 tier: 'basic',
                 user_name: '',
                 message: '',
-                wallet_address: '',
                 screenX: 0,
                 screenY: 0,
-                currentSize: 0
+                currentSize: 1
             });
         }
 
-        async function loadPurchasedStars() {
-            if (!supabase) return;
-            try {
-                const { data, error } = await supabase.from('purchased_stars').select('star_number, user_name, wallet_address, tier, message');
-                if (!error && data) {
-                    data.forEach(row => {
-                        const idx = row.star_number;
-                        if (idx !== null && idx < numStars) {
-                            stars[idx].isBought = true;
-                            stars[idx].user_name = row.user_name;
-                            stars[idx].wallet_address = row.wallet_address;
-                            stars[idx].tier = row.tier || 'basic';
-                            stars[idx].message = row.message || 'To the moon! 🚀';
-                        }
-                    });
-                }
-            } catch (err) {
-                console.error("Supabase data mapping failed:", err);
-            }
-        }
-        loadPurchasedStars();
-
-        // 2. Частицы
-        const numParticles = 100;
-        const particles = [];
+        // Скорость полета космической пыли
         const flySpeed = 5;
         for (let i = 0; i < numParticles; i++) {
             particles.push({ x: (Math.random() - 0.5) * 2000, y: (Math.random() - 0.5) * 2000, z: Math.random() * 2000 });
@@ -386,7 +339,7 @@
             });
         });
 
-        // NEW: Search engine button handler mechanics
+        // Обработчик механики поискового движка
         searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
@@ -402,10 +355,22 @@
             const randomScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
             const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
 
-            // Меняем физическое положение звезды в пространстве под экран пользователя,
-            // чтобы камера не улетала в пустые края галактики.
-            targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
-            targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
+            // Находим диапазон соседних звезд: 5 назад и 5 вперед
+            const startId = Math.max(0, idVal - 5);
+            const endId = Math.min(numStars - 1, idVal + 5);
+
+            // Сдвигаем всю группу из 11 звезд, чтобы они выстроились на экране рядом друг с другом
+            for (let i = startId; i <= endId; i++) {
+                const currentStar = stars[i];
+                const offsetIdx = i - idVal; // Смещение относительно искомой звезды (от -5 до +5)
+                
+                // Распределяем по горизонтали на экране с шагом в 45 пикселей
+                const neighborScreenX = randomScreenX + offsetIdx * 45;
+                const neighborScreenY = randomScreenY;
+
+                currentStar.x = (neighborScreenX - cx) * (currentStar.z + 1) / 800;
+                currentStar.y = (neighborScreenY - cy) * (currentStar.z + 1) / 800;
+            }
             
             focusedStarIndex = idVal;
             targetXOffset = 0;
@@ -424,8 +389,7 @@
                         <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
-                        <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
-                    `;
+                    `; // Адрес криптокошелька скрыт для безопасности
 
                     // Проверка выхода за пределы экрана
                     let left = randomScreenX + 20;
@@ -496,8 +460,7 @@
                     <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                     <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
-                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
-                `;
+                `; // Адрес криптокошелька скрыт для безопасности
 
                 // Проверка выхода за пределы экрана
                 let left = e.clientX + 15;
@@ -602,7 +565,7 @@
             payBtn.innerText = "Proceed to Web3 Payment";
         });
 
-        // 3. Render Pipeline Loop
+        // --- 3. Render Pipeline Loop ---
         let startTime = Date.now();
         function animate() {
             ctx.fillStyle = '#000002'; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -623,12 +586,9 @@
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 
-                // Оптимизация производительности: рендерим первые 5000 фоновых звезд + только те, которые куплены или находятся в поиске
-                if (i >= 5000 && !star.isBought && i !== focusedStarIndex) continue;
+                // Оптимизация производительности: рендерим первые 5000 фоновых звезд + купленные + центральную звезду поиска с её 10 соседями
+                if (i >= 5000 && !star.isBought && (focusedStarIndex === null || Math.abs(i - focusedStarIndex) > 5)) continue;
                 
-               // STATIC STARS
-               // вращение отключено — звезды остаются неподвижными
-
                 // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
@@ -659,7 +619,7 @@
                         size *= hoverPulse;
                     }
 
-                    // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
+                    // Рисуем яркий прицел вокруг сфокусированной через поиск звезды
                     if (focusedStarIndex === i) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
@@ -678,7 +638,7 @@
                 }
             }
 
-            // Летящие частицы
+            // Летящие частицы космической пыли
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i]; p.z -= flySpeed;
