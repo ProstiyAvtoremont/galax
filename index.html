@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
-    <!-- Исправлено подключение стабильной библиотеки Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
@@ -209,7 +208,6 @@
 <body>
 
     <div class="search-container">
-        <!-- Убрали ограничение max, теперь можно вводить любые ID до миллионов -->
         <input type="number" id="search-input" class="search-input" placeholder="Star ID (e.g. 999999)" min="0">
         <button id="search-btn" class="search-btn">SEARCH</button>
     </div>
@@ -295,15 +293,14 @@
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
-        // --- ДИНАМИЧЕСКАЯ АРХИТЕКТУРА ЗВЕЗД ---
-        const numStaticBackgroundStars = 1500; // Легкий фон для красоты, не нагружающий систему
+        // ==========================================
+        // ИЗМЕНЕНИЯ: ОПТИМИЗИРОВАННЫЙ ДВИЖОК ЗВЕЗД
+        // ==========================================
+        const numStaticBackgroundStars = 1500; 
         const backgroundStars = [];
-        
-        // Хранилище особых динамических звезд (купленные или те, что сейчас ищут)
-        // Ключ: star_number, Значение: объект звезды
-        const dynamicStars = new Map();
+        const dynamicStars = new Map(); // Карта для динамических (купленных/найденных) звезд
 
-        // Заполнение фоновых декоративных звезд
+        // Фоновый «шум» далекого космоса (не нагружает систему)
         for (let i = 0; i < numStaticBackgroundStars; i++) {
             backgroundStars.push({
                 x: (Math.random() - 0.5) * 3400,
@@ -315,9 +312,8 @@
             });
         }
 
-        // Детерминированная функция: вычисляет неизменные координаты по ID без сохранения в массивы
+        // Вычисление неизменных координат на лету по алгоритму синусов (для бесконечного числа ID)
         function generateDeterministicCoords(id) {
-            // Псевдослучайный хэш на основе ID звезды
             let xSeed = Math.sin(id * 12.9898) * 43758.5453;
             let ySeed = Math.sin(id * 78.233) * 43758.5453;
             let zSeed = Math.sin(id * 45.164) * 43758.5453;
@@ -329,7 +325,7 @@
             };
         }
 
-        // Создать структуру динамической звезды в памяти
+        // Создание или извлечение структуры динамической звезды из оперативной памяти
         function getOrCreateDynamicStar(id) {
             if (dynamicStars.has(id)) {
                 return dynamicStars.get(id);
@@ -355,24 +351,23 @@
             return star;
         }
 
-        // Очистка некупленных звезд, когда пользователь "уходит" (меняет фокус)
+        // Очистка некупленных звезд, если фокус камеры изменился
         function cleanupUnusedDynamicStars() {
             for (let [id, star] of dynamicStars.entries()) {
-                // Если звезда не куплена и на ней нет фокуса камеры — удаляем из памяти страницы
                 if (!star.isBought && id !== focusedStarIndex) {
                     dynamicStars.delete(id);
                 }
             }
         }
 
-        // Загружаем только последние 100 купленных звезд для первичного наполнения космоса
+        // Загрузка последних 100 купленных звезд из базы данных при старте
         async function loadRecentPurchasedStars() {
             if (!supabase) return;
             try {
                 const { data, error } = await supabase
                     .from('purchased_stars')
                     .select('star_number, user_name, wallet_address, tier, message')
-                    .order('star_number', { ascending: false }) // Можно сортировать по дате создания, если есть поле
+                    .order('star_number', { ascending: false })
                     .limit(100);
                     
                 if (!error && data) {
@@ -393,6 +388,7 @@
             }
         }
         loadRecentPurchasedStars();
+        // ==========================================
 
         // --- ЛЕТЯЩИЕ ЧАСТИЦЫ ЭФФЕКТА СКОРОСТИ ---
         const numParticles = 80;
@@ -436,7 +432,6 @@
             });
         });
 
-        // ОБРАБОТЧИК ПОИСКА СВЕРХБОЛЬШИХ ID ИЗ БАЗЫ ДАННЫХ
         searchBtn.addEventListener('click', async () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0) {
@@ -444,17 +439,13 @@
                 return;
             }
 
-            // Освобождаем память от старых некупленных звезд, так как пользователь "уходит"
             cleanupUnusedDynamicStars();
-
-            // Создаем или получаем звезду детерминированно
             const targetStar = getOrCreateDynamicStar(idVal);
             
             focusedStarIndex = idVal;
             targetXOffset = -targetStar.x;
             targetYOffset = -targetStar.y;
 
-            // Запрашиваем точечно из БД только эту одну конкретную звезду
             if (supabase && !targetStar.isBought) {
                 try {
                     const { data, error } = await supabase
@@ -523,7 +514,7 @@
                 }
             }
 
-            // Проверка наведения только на активные загруженные купленные звезды
+            // Обход динамической структуры карт звезд
             for (let [id, star] of dynamicStars.entries()) {
                 if (!star.isBought) continue;
                 const dx = mouseX - star.screenX; 
@@ -559,11 +550,9 @@
         canvas.addEventListener('click', (e) => {
             if (hoveredStar) return;
             
-            // Если пользователь кликает в пустоту, мы детерминированно подбираем случайный свободный высокий ID
             cleanupUnusedDynamicStars();
             tooltip.style.display = 'none';
 
-            // Генерируем случайный номер в пределах миллиона для покупки "вслепую" при клике по экрану
             const randomId = Math.floor(5000 + Math.random() * 995000);
             focusedStarIndex = randomId;
             
@@ -580,10 +569,9 @@
         modalClose.addEventListener('click', () => {
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
-            cleanupUnusedDynamicStars(); // Удаляем из памяти, если передумал покупать
+            cleanupUnusedDynamicStars();
         });
 
-        // ОТПРАВКА ДАННЫХ В SUPABASE
         payBtn.addEventListener('click', async () => {
             const userNameVal = ownerInput.value.trim() || "Anonymous";
             const msgVal = msgInput.value.trim() || "To the moon! 🚀";
@@ -613,7 +601,6 @@
                 }
             } catch (err) { console.error("Database sync issue:", err.message); }
 
-            // Фиксируем покупку в локальной оперативной памяти, теперь она не очистится автоматикой
             const star = getOrCreateDynamicStar(activeClickedStarNumber);
             star.isBought = true;
             star.user_name = userNameVal;
@@ -638,7 +625,6 @@
 
             if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
 
-            // Плавная интерполяция смещения камеры к выбранной звезде
             if (focusedStarIndex !== null) {
                 currentXOffset += (targetXOffset - currentXOffset) * 0.08;
                 currentYOffset += (targetYOffset - currentYOffset) * 0.08;
@@ -647,7 +633,7 @@
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
-            // 1. Отрендерить легкие фоновые космические частицы (оптимизировано)
+            // Отрисовка фоновых частиц космоса
             for (let i = 0; i < numStaticBackgroundStars; i++) {
                 const bp = backgroundStars[i];
                 const factor = 800 / (bp.z + globalZOffset + 1);
@@ -664,7 +650,7 @@
                 }
             }
 
-            // 2. Отрендерить только активные динамические звезды (купленные или под фокусом поиска)
+            // Отрисовка динамических объектов звезд из карты памяти
             for (let [id, star] of dynamicStars.entries()) {
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
@@ -694,7 +680,6 @@
                         size *= (2.4 + Math.sin(time * 10) * 0.3);
                     }
 
-                    // Рисуем яркий прицел вокруг сфокусированной звезды (любого диапазона ID)
                     if (focusedStarIndex === id) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
@@ -713,7 +698,7 @@
                 }
             }
 
-            // 3. Летящие частицы эффекта скорости
+            // Летящие частицы эффекта скорости
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i]; p.z -= flySpeed;
