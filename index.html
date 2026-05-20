@@ -50,7 +50,7 @@
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
         }
 
-        /* Search Bar Panel Styling */
+        /* NEW: Search Bar Panel Styling */
         .search-container {
             position: absolute;
             top: 20px;
@@ -211,7 +211,7 @@
 </head>
 <body>
 
-    <!-- Search Input Interface Structure -->
+    <!-- NEW: Search Input Interface Structure -->
     <div class="search-container">
         <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
         <button id="search-btn" class="search-btn">SEARCH</button>
@@ -386,7 +386,7 @@
             });
         });
 
-        // Search engine button handler mechanics
+        // NEW: Search engine button handler mechanics
         searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
@@ -415,15 +415,16 @@
                         <div class="tooltip-type" style="margin-top:5px;">${label}</div>
                         <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
+                        <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
                         <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
                     `;
                 }, 400);
             } else {
                 // Если свободна — убираем тултип и предлагаем купить её
                 tooltip.style.display = 'none';
-                if (confirm(`Star #${idVal} is FREE! Would you like to buy it right now?`)) {
+                if (confirm(`Star #${idVal} [X:${Math.round(targetStar.x)}, Y:${Math.round(targetStar.y)}, Z:${Math.round(targetStar.z)}] is FREE! Would you like to buy it right now?`)) {
                     activeClickedStarNumber = idVal;
-                    document.getElementById('modal-title').innerText = `Claim Star #${idVal}`;
+                    document.getElementById('modal-title').innerText = `Claim Star #${idVal} (${Math.round(targetStar.x)}, ${Math.round(targetStar.y)})`;
                     modal.style.display = 'block';
                     setTimeout(() => modal.classList.add('active'), 10);
                 }
@@ -437,49 +438,48 @@
             let foundStar = null;
             focusedStarHovered = false;
 
-            if (focusedStarIndex !== null) {
-                const focusedStar = stars[focusedStarIndex];
-                const dxFocus = mouseX - focusedStar.screenX;
-                const dyFocus = mouseY - focusedStar.screenY;
-                const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
+if (focusedStarIndex !== null) {
 
-                if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
-                    focusedStarHovered = true;
-                }
-            }
+    const focusedStar = stars[focusedStarIndex];
+
+    const dxFocus = mouseX - focusedStar.screenX;
+    const dyFocus = mouseY - focusedStar.screenY;
+
+    const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
+
+    if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
+        focusedStarHovered = true;
+        canvas.style.cursor = 'pointer';
+    }
+}
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 if (!star.isBought) continue;
-                const dx = mouseX - star.screenX; 
-                const dy = mouseY - star.screenY;
+                const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
                 const hitRadius = Math.max(star.currentSize * 3, 10);
                 if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; break; }
             }
 
-            // Исправленное переключение состояния курсора мыши
-            if (focusedStarHovered || foundStar) {
-                canvas.style.cursor = 'pointer';
-            } else {
-                canvas.style.cursor = 'crosshair';
-            }
-
             if (foundStar) {
-                focusedStarIndex = null; // Отменяем фокус поиска, если пользователь водит мышкой по купленным звездам
+                focusedStarIndex = null; // Отменяем фокус поиска, если пользователь водит мышкой
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
                 tooltip.style.left = `${e.clientX + 15}px`;
                 tooltip.style.top = `${e.clientY + 15}px`;
                 tooltip.className = foundStar.tier;
                 
-                // Исправлено: заменено targetStar на foundStar, чтобы предотвратить падение скрипта
                 let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
                 tooltip.innerHTML = `
                     <div class="tooltip-type">${label}</div>
                     <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
+                    <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
                     <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
                 `;
+                if (!focusedStarHovered) {
+    canvas.style.cursor = 'crosshair';
+}
             } else { 
                 if (focusedStarIndex === null) {
                     hoveredStar = null; 
@@ -508,7 +508,8 @@
             }
 
             activeClickedStarNumber = closestStarIdx;
-            document.getElementById('modal-title').innerText = `Claim Star #${closestStarIdx}`;
+            const cStar = stars[closestStarIdx];
+            document.getElementById('modal-title').innerText = `Claim Star #${closestStarIdx} (${Math.round(cStar.x)}, ${Math.round(cStar.y)})`;
             modal.style.display = 'block';
             setTimeout(() => modal.classList.add('active'), 10);
         });
@@ -584,7 +585,13 @@
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 
-                // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции звезд
+                // Оптимизация производительности: рендерим первые 5000 фоновых звезд + только те, которые куплены или находятся в поиске
+                if (i >= 5000 && !star.isBought && i !== focusedStarIndex) continue;
+                
+               // STATIC STARS
+               // вращение отключено — звезды остаются неподвижными
+
+                // Применяем текущие смещения камеры (currentXOffset / currentYOffset) к проекции
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
                 star.screenY = cy + (star.y + currentYOffset) * factor;
@@ -614,7 +621,7 @@
                         size *= hoverPulse;
                     }
 
-                    // Рисуем яркий прицел вокруг сфокусированной через поиск звезды
+                    // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
                     if (focusedStarIndex === i) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
@@ -633,7 +640,7 @@
                 }
             }
 
-            // Летящие частицы (Остаются независимыми от смещения камеры)
+            // Летящие частицы
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i]; p.z -= flySpeed;
