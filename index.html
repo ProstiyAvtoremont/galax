@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
     <!-- Подключаем стабильную библиотеку Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://jsdelivr.net"></script>
     <style>
         body {
             margin: 0;
@@ -212,7 +212,7 @@
 <body>
 
     <!-- NEW: Search Input Interface Structure -->
-    <div class="search-container">
+    <div class="search-container {">
         <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
         <button id="search-btn" class="search-btn">SEARCH</button>
     </div>
@@ -253,7 +253,7 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://xfltnkwrkixnmgyonqrt.supabase.co";
+        const SUPABASE_URL = "https://supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
         
         let supabase = null;
@@ -288,8 +288,6 @@
         let currentXOffset = 0;
         let currentYOffset = 0;
         let focusedStarHovered = false;
-        let lastFocusedStarIndex = null;
-        let activeNeighbors = [];
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -350,6 +348,7 @@
         const numParticles = 100;
         const particles = [];
         const flySpeed = 5;
+        const flySpeed = 5;
         for (let i = 0; i < numParticles; i++) {
             particles.push({ x: (Math.random() - 0.5) * 2000, y: (Math.random() - 0.5) * 2000, z: Math.random() * 2000 });
         }
@@ -404,10 +403,22 @@
             const randomScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
             const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
 
-            // Меняем физическое положение звезды в пространстве под экран пользователя,
-            // чтобы камера не улетала в пустые края галактики.
-            targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
-            targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
+            // Находим диапазон соседних звезд: 5 назад и 5 вперед
+            const startId = Math.max(0, idVal - 5);
+            const endId = Math.min(numStars - 1, idVal + 5);
+
+            // Сдвигаем всю группу из 11 звезд, чтобы они выстроились на экране рядом друг с другом
+            for (let i = startId; i <= endId; i++) {
+                const currentStar = stars[i];
+                const offsetIdx = i - idVal; // Смещение относительно искомой звезды (от -5 до +5)
+                
+                // Распределяем по горизонтали на экране с шагом в 45 пикселей
+                const neighborScreenX = randomScreenX + offsetIdx * 45;
+                const neighborScreenY = randomScreenY;
+
+                currentStar.x = (neighborScreenX - cx) * (currentStar.z + 1) / 800;
+                currentStar.y = (neighborScreenY - cy) * (currentStar.z + 1) / 800;
+            }
             
             focusedStarIndex = idVal;
             targetXOffset = 0;
@@ -426,8 +437,7 @@
                         <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
-                        <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
-                    `;
+                    `; // Адрес криптокошелька скрыт для безопасности
 
                     // Проверка выхода за пределы экрана
                     let left = randomScreenX + 20;
@@ -498,8 +508,7 @@
                     <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                     <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
-                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
-                `;
+                `; // Адрес криптокошелька скрыт для безопасности
 
                 // Проверка выхода за пределы экрана
                 let left = e.clientX + 15;
@@ -595,18 +604,6 @@
             stars[activeClickedStarNumber].tier = selectedTier;
             stars[activeClickedStarNumber].message = msgVal;
 
-            // Наводим фокус камеры на купленную звезду и выравниваем ее положение для отрисовки соседей
-            const pStar = stars[activeClickedStarNumber];
-            const paddingX = canvas.width * 0.15;
-            const paddingY = canvas.height * 0.15;
-            const randomScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
-            const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
-            pStar.x = (randomScreenX - cx) * (pStar.z + 1) / 800;
-            pStar.y = (randomScreenY - cy) * (pStar.z + 1) / 800;
-            focusedStarIndex = activeClickedStarNumber;
-            targetXOffset = 0;
-            targetYOffset = 0;
-
             alert(`Success! Star #${activeClickedStarNumber} is registered.`);
             
             ownerInput.value = ""; msgInput.value = "";
@@ -634,52 +631,11 @@
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
-            // Динамический расчет соседей при изменении фокуса звезды (поиск или покупка новой)
-            if (focusedStarIndex !== null && focusedStarIndex !== lastFocusedStarIndex) {
-                lastFocusedStarIndex = focusedStarIndex;
-                activeNeighbors = [];
-                
-                // Строго проверяем 5 звезд до и 5 звезд после по строгому порядку номеров (ID)
-                for (let i = focusedStarIndex - 5; i <= focusedStarIndex + 5; i++) {
-                    if (i >= 0 && i < numStars && i !== focusedStarIndex) {
-                        if (stars[i] && stars[i].isBought) {
-                            activeNeighbors.push(i);
-                        }
-                    }
-                }
-                
-                // Красиво распределяем соседей по кругу вокруг центральной звезды на экране последовательно по их ID
-                const targetStar = stars[focusedStarIndex];
-                activeNeighbors.forEach((nIdx) => {
-                    const offset = nIdx - focusedStarIndex; // Разница ID: от -5 до 5
-                    // Переводим смещение в фиксированный индекс от 0 до 9 для предсказуемого кругового расположения
-                    const angleIndex = offset < 0 ? offset + 5 : offset + 4;
-                    const angle = (angleIndex / 10) * Math.PI * 2;
-                    const radius = 75; // Фиксированный радиус для наглядного ровного соседства
-                    
-                    stars[nIdx].z = targetStar.z; 
-                    stars[nIdx].x = targetStar.x + (Math.cos(angle) * radius * (targetStar.z + 1) / 800);
-                    stars[nIdx].y = targetStar.y + (Math.sin(angle) * radius * (targetStar.z + 1) / 800);
-                });
-            }
-            if (focusedStarIndex === null) {
-                lastFocusedStarIndex = null;
-                activeNeighbors = [];
-            }
-
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 
-                // Ограничение отображения: строго до 11 купленных звезд на экране при фокусе (целевая + до 10 соседей по порядку)
-                if (focusedStarIndex !== null) {
-                    if (star.isBought) {
-                        if (i !== focusedStarIndex && !activeNeighbors.includes(i)) continue;
-                    } else {
-                        if (i >= 5000) continue;
-                    }
-                } else {
-                    if (i >= 5000 && !star.isBought) continue;
-                }
+                // Измененная оптимизация производительности: рендерим первые 5000 фоновых звезд + купленные + центральную звезду поиска с её 10 соседями
+                if (i >= 5000 && !star.isBought && (focusedStarIndex === null || Math.abs(i - focusedStarIndex) > 5)) continue;
                 
                // STATIC STARS
                // вращение отключено — звезды остаются неподвижными
@@ -714,7 +670,7 @@
                         size *= hoverPulse;
                     }
 
-                    // Рисуем яркий прицел вокруг сфокусированной звезды
+                    // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
                     if (focusedStarIndex === i) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
