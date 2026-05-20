@@ -396,17 +396,27 @@
 
             const targetStar = stars[idVal];
             
-            // Смещаем камеру, центрируя галактику на этой звезде
+            // Рассчитываем случайные экранные координаты в пределах видимой области (с безопасными отступами 15%)
+            const paddingX = canvas.width * 0.15;
+            const paddingY = canvas.height * 0.15;
+            const randomScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
+            const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+
+            // Меняем физическое положение звезды в пространстве под экран пользователя,
+            // чтобы камера не улетала в пустые края галактики.
+            targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
+            targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
+            
             focusedStarIndex = idVal;
-            targetXOffset = -targetStar.x;
-            targetYOffset = -targetStar.y;
+            targetXOffset = 0;
+            targetYOffset = 0;
 
             if (targetStar.isBought) {
-                // Если звезда куплена, принудительно открываем тултип по центру
+                // Если звезда куплена, принудительно открываем тултип рядом с ней
                 setTimeout(() => {
                     tooltip.style.display = 'block';
-                    tooltip.style.left = `${cx + 20}px`;
-                    tooltip.style.top = `${cy - 20}px`;
+                    tooltip.style.left = `${randomScreenX + 20}px`;
+                    tooltip.style.top = `${randomScreenY - 20}px`;
                     tooltip.className = targetStar.tier;
                     
                     let label = targetStar.tier === 'supernova' ? '⚡ Supernova Core' : (targetStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
