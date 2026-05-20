@@ -494,7 +494,10 @@
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-                if (!star.isBought && !isNeighborStar(i)) continue;
+                // Фильтр для hover: только если куплена И является соседом (или фокусом)
+                if (i >= 5000 && !star.isBought) continue;
+                if (i >= 5000 && star.isBought && !isNeighborStar(i) && i !== focusedStarIndex) continue;
+
                 const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
                 const hitRadius = Math.max(star.currentSize * 3, 10);
                 if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break;
@@ -502,7 +505,6 @@
             }
 
             if (foundStar) {
-                focusedStarIndex = null;
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
                 tooltip.className = foundStar.tier;
@@ -526,10 +528,8 @@
                 tooltip.style.top = `${top}px`;
                 if (!focusedStarHovered) canvas.style.cursor = 'crosshair';
             } else { 
-                if (focusedStarIndex === null) {
-                    hoveredStar = null;
-                    tooltip.style.display = 'none'; 
-                }
+                hoveredStar = null;
+                tooltip.style.display = 'none'; 
             }
         });
         canvas.addEventListener('click', async (e) => {
@@ -545,11 +545,11 @@
             let minDist = Infinity;
 
             for (let i = 0; i < numStars; i++) {
-                if (stars[i].isBought || isNeighborStar(i)) {
-                    // Разрешаем кликать по купленным или соседям
-                } else {
-                    continue;
-                }
+                // Ищем только по тем, что рисуются (фон + соседи)
+                const isBackground = (i < 5000);
+                const isTargetOrNeighbor = (isNeighborStar(i) || i === focusedStarIndex);
+                if (!isBackground && !stars[i].isBought) continue; // Не кликаем по пустым дальним
+                
                 const dx = mouseX - stars[i].screenX;
                 const dy = mouseY - stars[i].screenY;
                 const dist = dx*dx + dy*dy;
@@ -626,7 +626,19 @@
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-                if (i >= 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
+                
+                // --- ЛОГИКА ФИЛЬТРАЦИИ ---
+                // Рисуем только:
+                // 1. Звезды фона (0-4999)
+                // 2. Купленные звезды, ТОЛЬКО если они фокус или соседи
+                const isBackground = (i < 5000);
+                const isTarget = (i === focusedStarIndex);
+                const isNeighbor = isNeighborStar(i);
+
+                if (!isBackground && star.isBought && !isTarget && !isNeighbor) {
+                    continue; 
+                }
+                
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor;
                 star.screenY = cy + (star.y + currentYOffset) * factor;
