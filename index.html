@@ -288,6 +288,8 @@
         let currentXOffset = 0;
         let currentYOffset = 0;
         let focusedStarHovered = false;
+        let lastFocusedStarIndex = null;
+        let activeNeighbors = [];
 
         function resize() {
             canvas.width = window.innerWidth;
@@ -593,6 +595,18 @@
             stars[activeClickedStarNumber].tier = selectedTier;
             stars[activeClickedStarNumber].message = msgVal;
 
+            // Наводим фокус камеры на купленную звезду и выравниваем ее положение для отрисовки соседей
+            const pStar = stars[activeClickedStarNumber];
+            const paddingX = canvas.width * 0.15;
+            const paddingY = canvas.height * 0.15;
+            const randomScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
+            const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+            pStar.x = (randomScreenX - cx) * (pStar.z + 1) / 800;
+            pStar.y = (randomScreenY - cy) * (pStar.z + 1) / 800;
+            focusedStarIndex = activeClickedStarNumber;
+            targetXOffset = 0;
+            targetYOffset = 0;
+
             alert(`Success! Star #${activeClickedStarNumber} is registered.`);
             
             ownerInput.value = ""; msgInput.value = "";
@@ -620,11 +634,53 @@
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
+            // Динамический расчет соседей при изменении фокуса звезды (поиск или покупка новой)
+            if (focusedStarIndex !== null && focusedStarIndex !== lastFocusedStarIndex) {
+                lastFocusedStarIndex = focusedStarIndex;
+                activeNeighbors = [];
+                
+                let countLow = 0;
+                for (let i = focusedStarIndex - 1; i >= 0 && countLow < 5; i--) {
+                    if (stars[i] && stars[i].isBought) {
+                        activeNeighbors.push(i);
+                        countLow++;
+                    }
+                }
+                
+                let countHigh = 0;
+                for (let i = focusedStarIndex + 1; i < numStars && countHigh < 5; i++) {
+                    if (stars[i] && stars[i].isBought) {
+                        activeNeighbors.push(i);
+                        countHigh++;
+                    }
+                }
+                
+                // Красиво распределяем соседей по кругу вокруг центральной звезды на экране
+                const targetStar = stars[focusedStarIndex];
+                activeNeighbors.forEach((nIdx, index) => {
+                    const angle = (index / Math.max(1, activeNeighbors.length)) * Math.PI * 2;
+                    const radius = 60 + (index * 12); // Небольшое разнесение радиусов
+                    stars[nIdx].z = targetStar.z; 
+                    stars[nIdx].x = targetStar.x + (Math.cos(angle) * radius * (targetStar.z + 1) / 800);
+                    stars[nIdx].y = targetStar.y + (Math.sin(angle) * radius * (targetStar.z + 1) / 800);
+                });
+            }
+            if (focusedStarIndex === null) {
+                lastFocusedStarIndex = null;
+                activeNeighbors = [];
+            }
+
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 
-                // Оптимизация производительности: рендерим первые 5000 фоновых звезд + только те, которые куплены или находятся в поиске
-                if (i >= 5000 && !star.isBought && i !== focusedStarIndex) continue;
+                // Оптимизация производительности: рендерим первые 5000 звезд + строго до 11 купленных звезд на экране при фокусе
+                if (i >= 5000) {
+                    if (focusedStarIndex !== null) {
+                        if (i !== focusedStarIndex && !activeNeighbors.includes(i)) continue;
+                    } else {
+                        if (!star.isBought) continue;
+                    }
+                }
                 
                // STATIC STARS
                // вращение отключено — звезды остаются неподвижными
@@ -659,7 +715,7 @@
                         size *= hoverPulse;
                     }
 
-                    // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
+                    // Рисуем яркий прицел вокруг сфокусированной звезды
                     if (focusedStarIndex === i) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
