@@ -460,6 +460,7 @@
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             let foundStar = null;
+            let foundStarIdx = null;
             focusedStarHovered = false;
 
             if (focusedStarIndex !== null) {
@@ -479,7 +480,7 @@
                 if (!star.isBought) continue;
                 const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
                 const hitRadius = Math.max(star.currentSize * 3, 10);
-                if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; break; }
+                if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break; }
             }
 
             if (foundStar) {
@@ -490,6 +491,7 @@
                 
                 let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
                 tooltip.innerHTML = `
+                    <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
                     <div class="tooltip-type">${label}</div>
                     <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
