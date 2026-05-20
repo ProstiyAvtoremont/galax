@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
     <!-- Подключаем стабильную библиотеку Supabase -->
-    <script src="https://jsdelivr.net"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             margin: 0;
@@ -253,7 +253,7 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_URL = "https://xfltnkwrkixnmgyonqrt.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
         
         let supabase = null;
@@ -639,27 +639,24 @@
                 lastFocusedStarIndex = focusedStarIndex;
                 activeNeighbors = [];
                 
-                let countLow = 0;
-                for (let i = focusedStarIndex - 1; i >= 0 && countLow < 5; i--) {
-                    if (stars[i] && stars[i].isBought) {
-                        activeNeighbors.push(i);
-                        countLow++;
+                // Строго проверяем 5 звезд до и 5 звезд после по строгому порядку номеров (ID)
+                for (let i = focusedStarIndex - 5; i <= focusedStarIndex + 5; i++) {
+                    if (i >= 0 && i < numStars && i !== focusedStarIndex) {
+                        if (stars[i] && stars[i].isBought) {
+                            activeNeighbors.push(i);
+                        }
                     }
                 }
                 
-                let countHigh = 0;
-                for (let i = focusedStarIndex + 1; i < numStars && countHigh < 5; i++) {
-                    if (stars[i] && stars[i].isBought) {
-                        activeNeighbors.push(i);
-                        countHigh++;
-                    }
-                }
-                
-                // Красиво распределяем соседей по кругу вокруг центральной звезды на экране
+                // Красиво распределяем соседей по кругу вокруг центральной звезды на экране последовательно по их ID
                 const targetStar = stars[focusedStarIndex];
-                activeNeighbors.forEach((nIdx, index) => {
-                    const angle = (index / Math.max(1, activeNeighbors.length)) * Math.PI * 2;
-                    const radius = 60 + (index * 12); // Небольшое разнесение радиусов
+                activeNeighbors.forEach((nIdx) => {
+                    const offset = nIdx - focusedStarIndex; // Разница ID: от -5 до 5
+                    // Переводим смещение в фиксированный индекс от 0 до 9 для предсказуемого кругового расположения
+                    const angleIndex = offset < 0 ? offset + 5 : offset + 4;
+                    const angle = (angleIndex / 10) * Math.PI * 2;
+                    const radius = 75; // Фиксированный радиус для наглядного ровного соседства
+                    
                     stars[nIdx].z = targetStar.z; 
                     stars[nIdx].x = targetStar.x + (Math.cos(angle) * radius * (targetStar.z + 1) / 800);
                     stars[nIdx].y = targetStar.y + (Math.sin(angle) * radius * (targetStar.z + 1) / 800);
@@ -673,13 +670,15 @@
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 
-                // Оптимизация производительности: рендерим первые 5000 звезд + строго до 11 купленных звезд на экране при фокусе
-                if (i >= 5000) {
-                    if (focusedStarIndex !== null) {
+                // Ограничение отображения: строго до 11 купленных звезд на экране при фокусе (целевая + до 10 соседей по порядку)
+                if (focusedStarIndex !== null) {
+                    if (star.isBought) {
                         if (i !== focusedStarIndex && !activeNeighbors.includes(i)) continue;
                     } else {
-                        if (!star.isBought) continue;
+                        if (i >= 5000) continue;
                     }
+                } else {
+                    if (i >= 5000 && !star.isBought) continue;
                 }
                 
                // STATIC STARS
