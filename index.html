@@ -415,8 +415,6 @@
                 // Если звезда куплена, принудительно открываем тултип рядом с ней
                 setTimeout(() => {
                     tooltip.style.display = 'block';
-                    tooltip.style.left = `${randomScreenX + 20}px`;
-                    tooltip.style.top = `${randomScreenY - 20}px`;
                     tooltip.className = targetStar.tier;
                     
                     let label = targetStar.tier === 'supernova' ? '⚡ Supernova Core' : (targetStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
@@ -428,6 +426,22 @@
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
                         <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
                     `;
+
+                    // Проверка выхода за пределы экрана
+                    let left = randomScreenX + 20;
+                    let top = randomScreenY - 20;
+
+                    if (left + tooltip.offsetWidth > window.innerWidth) {
+                        left = randomScreenX - tooltip.offsetWidth - 20;
+                    }
+                    if (top + tooltip.offsetHeight > window.innerHeight) {
+                        top = window.innerHeight - tooltip.offsetHeight - 20;
+                    }
+                    if (left < 10) left = 10;
+                    if (top < 10) top = 10;
+
+                    tooltip.style.left = `${left}px`;
+                    tooltip.style.top = `${top}px`;
                 }, 400);
             } else {
                 // Если свободна — убираем тултип и предлагаем купить её
@@ -448,20 +462,17 @@
             let foundStar = null;
             focusedStarHovered = false;
 
-if (focusedStarIndex !== null) {
+            if (focusedStarIndex !== null) {
+                const focusedStar = stars[focusedStarIndex];
+                const dxFocus = mouseX - focusedStar.screenX;
+                const dyFocus = mouseY - focusedStar.screenY;
+                const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
 
-    const focusedStar = stars[focusedStarIndex];
-
-    const dxFocus = mouseX - focusedStar.screenX;
-    const dyFocus = mouseY - focusedStar.screenY;
-
-    const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
-
-    if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
-        focusedStarHovered = true;
-        canvas.style.cursor = 'pointer';
-    }
-}
+                if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
+                    focusedStarHovered = true;
+                    canvas.style.cursor = 'pointer';
+                }
+            }
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
@@ -475,8 +486,6 @@ if (focusedStarIndex !== null) {
                 focusedStarIndex = null; // Отменяем фокус поиска, если пользователь водит мышкой
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
-                tooltip.style.left = `${e.clientX + 15}px`;
-                tooltip.style.top = `${e.clientY + 15}px`;
                 tooltip.className = foundStar.tier;
                 
                 let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
@@ -487,9 +496,26 @@ if (focusedStarIndex !== null) {
                     <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
                     <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
                 `;
+
+                // Проверка выхода за пределы экрана
+                let left = e.clientX + 15;
+                let top = e.clientY + 15;
+
+                if (left + tooltip.offsetWidth > window.innerWidth) {
+                    left = e.clientX - tooltip.offsetWidth - 15;
+                }
+                if (top + tooltip.offsetHeight > window.innerHeight) {
+                    top = e.clientY - tooltip.offsetHeight - 15;
+                }
+                if (left < 10) left = 10;
+                if (top < 10) top = 10;
+
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+
                 if (!focusedStarHovered) {
-    canvas.style.cursor = 'crosshair';
-}
+                    canvas.style.cursor = 'crosshair';
+                }
             } else { 
                 if (focusedStarIndex === null) {
                     hoveredStar = null; 
