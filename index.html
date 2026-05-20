@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
-    <script src="https://jsdelivr.net"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body {
             margin: 0;
@@ -103,14 +103,21 @@
             box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
             min-width: 220px;
         }
-        #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3); }
-        #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3); }
+        #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3);
+        }
+        #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
+        }
         
-        .tooltip-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #ffd700; }
-        #star-tooltip.supernova .tooltip-title { color: #ff3366; }
-        #star-tooltip.constellation .tooltip-title { color: #00ffff; }
-        .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
-        .tooltip-meta { color: #888; font-size: 10px; margin-top: 8px; word-break: break-all; }
+        .tooltip-title { font-weight: bold;
+        font-size: 16px; margin-bottom: 4px; color: #ffd700; }
+        #star-tooltip.supernova .tooltip-title { color: #ff3366;
+        }
+        #star-tooltip.constellation .tooltip-title { color: #00ffff;
+        }
+        .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7;
+        }
+        .tooltip-meta { color: #888; font-size: 10px; margin-top: 8px; word-break: break-all;
+        }
 
         /* Neon Payment Modal */
         #payment-modal {
@@ -224,6 +231,7 @@
     <div id="star-tooltip"></div>
 
     <div id="payment-modal">
+      
         <span class="modal-close" id="modal-close">&times;</span>
         <h3 id="modal-title" style="color: #ffd700; margin-top: 0; margin-bottom: 5px;">Claim This Star</h3>
         <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">Immortalize your name on the galaxy map via DOGE.</p>
@@ -231,11 +239,14 @@
         <div class="tier-box selected" data-tier="basic" data-price="7">
             <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star (~7 DOGE)</div>
         </div>
-        <div class="tier-box" data-tier="supernova" data-price="28">
-            <div style="font-weight:bold; color:#ff3366;">✨ Supernova (~28 DOGE)</div>
+        <div class="tier-box" data-tier="supernova" 
+        data-price="28">
+            <div style="font-weight:bold;
+            color:#ff3366;">✨ Supernova (~28 DOGE)</div>
         </div>
         <div class="tier-box" data-tier="constellation" data-price="250">
-            <div style="font-weight:bold; color:#00ffff;">🌌 Constellation (~250 DOGE)</div>
+            <div style="font-weight:bold;
+            color:#00ffff;">🌌 Constellation (~250 DOGE)</div>
         </div>
 
         <div class="input-group">
@@ -244,7 +255,8 @@
         </div>
         <div class="input-group">
             <label for="star-msg">Your Message</label>
-            <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="60">
+            <input type="text" id="star-msg" 
+            class="input-field" placeholder="To the moon! 🚀" maxlength="60">
         </div>
 
         <button class="pay-btn" id="pay-btn">Proceed to Web3 Payment</button>
@@ -256,6 +268,7 @@
         
         let supabase = null;
         if (typeof Supabase !== 'undefined') {
+            
             supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         }
 
@@ -303,37 +316,19 @@
                 x: (Math.random() - 0.5) * 3000,
                 y: (Math.random() - 0.5) * 3000,
                 z: Math.random() * 3000,
+          
                 phase: Math.random() * Math.PI * 2,
                 flickerSpeed: 0.02 + Math.random() * 0.05,
                 isBought: false,
                 tier: 'basic',
                 user_name: '',
-                message: '',
+                message: 
+                '',
                 wallet_address: '',
                 screenX: 0,
                 screenY: 0,
-                currentSize: 0,
-                isNeighborOfBought: false // Флаг, подсвечивающий присутствие соседа
+                currentSize: 0
             });
-        }
-
-        // Функция пространственной группировки соседних звезд вокруг выбранной
-        function arrangeNeighbors(centerIdx) {
-            const centerStar = stars[centerIdx];
-            for (let i = 1; i <= 5; i++) {
-                const idxDown = centerIdx - i;
-                if (idxDown >= 0 && !stars[idxDown].isBought) {
-                    stars[idxDown].x = centerStar.x + (Math.random() - 0.5) * 350;
-                    stars[idxDown].y = centerStar.y + (Math.random() - 0.5) * 350;
-                    stars[idxDown].z = centerStar.z + (Math.random() - 0.5) * 100;
-                }
-                const idxUp = centerIdx + i;
-                if (idxUp < numStars && !stars[idxUp].isBought) {
-                    stars[idxUp].x = centerStar.x + (Math.random() - 0.5) * 350;
-                    stars[idxUp].y = centerStar.y + (Math.random() - 0.5) * 350;
-                    stars[idxUp].z = centerStar.z + (Math.random() - 0.5) * 100;
-                }
-            }
         }
 
         async function loadPurchasedStars() {
@@ -344,18 +339,13 @@
                     data.forEach(row => {
                         const idx = row.star_number;
                         if (idx !== null && idx < numStars) {
+               
                             stars[idx].isBought = true;
                             stars[idx].user_name = row.user_name;
                             stars[idx].wallet_address = row.wallet_address;
+                         
                             stars[idx].tier = row.tier || 'basic';
                             stars[idx].message = row.message || 'To the moon! 🚀';
-                            
-                            // Помечаем 10 соседних звёзд как видимые на карте
-                            for (let n = 1; n <= 5; n++) {
-                                if (idx - n >= 0) stars[idx - n].isNeighborOfBought = true;
-                                if (idx + n < numStars) stars[idx + n].isNeighborOfBought = true;
-                            }
-                            arrangeNeighbors(idx);
                         }
                     });
                 }
@@ -429,22 +419,33 @@
             targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
             targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
             
-            // Распределяем соседей вокруг найденной звезды, чтобы они были видны на холсте
-            arrangeNeighbors(idVal);
-
             focusedStarIndex = idVal;
             targetXOffset = 0;
             targetYOffset = 0;
+
+            // Привязываем 10 соседей (5 в меньшую сторону, 5 в большую сторону) к координатам выбранной звезды
+            let startIdx = Math.max(0, idVal - 5);
+            let endIdx = Math.min(numStars - 1, idVal + 5);
+            for (let i = startIdx; i <= endIdx; i++) {
+                if (i === idVal) continue;
+                const angle = (i - idVal) * (Math.PI / 3);
+                const radius = 50 + Math.abs(i - idVal) * 20;
+                stars[i].x = targetStar.x + Math.cos(angle) * radius;
+                stars[i].y = targetStar.y + Math.sin(angle) * radius;
+                stars[i].z = targetStar.z + (i - idVal) * 5;
+            }
+
             if (targetStar.isBought) {
                 // Если звезда куплена, принудительно открываем тултип рядом с ней
                 setTimeout(() => {
                     tooltip.style.display = 'block';
                     tooltip.className = targetStar.tier;
            
-                     
+                    
                     let label = targetStar.tier === 'supernova' ? '⚡ Supernova Core' : (targetStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
                     tooltip.innerHTML = `
-                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND STAR #${idVal}</div>
+                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND 
+                        STAR #${idVal}</div>
                         <div class="tooltip-type" style="margin-top:5px;">${label}</div>
                         <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
@@ -503,49 +504,36 @@
             }
 
      
-            for (let i = 0; i < numStars; i++) {
-                const star = stars[i];
-                // Интерактивными на карте являются первые 5000 фоновых, купленные и соседи
-                const isFocusNeighbor = focusedStarIndex !== null && Math.abs(i - focusedStarIndex) <= 5;
-                if (!star.isBought && i >= 5000 && !star.isNeighborOfBought && !isFocusNeighbor) continue;
-
-                const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
-                const hitRadius = Math.max(star.currentSize * 3, 10);
-                if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break;
+            // Ищем hover только среди активных 11 видимых соседей, чтобы убрать лишнюю нагрузку
+            if (focusedStarIndex !== null) {
+                let startIdx = Math.max(0, focusedStarIndex - 5);
+                let endIdx = Math.min(numStars - 1, focusedStarIndex + 5);
+                for (let i = startIdx; i <= endIdx; i++) {
+                    const star = stars[i];
+                    if (!star.isBought) continue;
+                    const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
+                    const hitRadius = Math.max(star.currentSize * 3, 10);
+                    if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break; }
                 }
             }
 
             if (foundStar) {
-                focusedStarIndex = null;
-                // Отменяем фокус поиска, если пользователь водит мышкой
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
+                tooltip.className = foundStar.tier;
                 
-                if (foundStar.isBought) {
-                    tooltip.className = foundStar.tier;
-                    let label = foundStar.tier === 'supernova' ?
-                    '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
-                    tooltip.innerHTML = `
-                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
-                        <div class="tooltip-type">${label}</div>
-                        <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
-                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
-                        <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
-                        <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ?
-                        foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
-                    `;
-                } else {
-                    // Подсказка для свободной соседней звезды, чтобы знать её ID и скупать подряд
-                    tooltip.className = '';
-                    tooltip.style.borderColor = '#ffd700';
-                    tooltip.innerHTML = `
-                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
-                        <div class="tooltip-title" style="color:#fff;">Available Star</div>
-                        <div style="font-style:italic; opacity:0.7; margin: 4px 0;">This star is free. Click to claim it!</div>
-                        <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
-                    `;
-                }
-
+                let label = foundStar.tier === 'supernova' ?
+                '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
+                tooltip.innerHTML = `
+                    <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
+                    <div class="tooltip-type">${label}</div>
+                    <div class="tooltip-title">${foundStar.user_name ||
+                    'Anonymous Buyer'}</div>
+                    <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
+                    <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
+                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ?
+                    foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
+                `;
                 // Проверка выхода за пределы экрана
                 let left = e.clientX + 15;
                 let top = e.clientY + 15;
@@ -561,42 +549,89 @@
 
                 tooltip.style.left = `${left}px`;
                 tooltip.style.top = `${top}px`;
-                canvas.style.cursor = 'pointer';
-            } else { 
-                if (focusedStarIndex === null) {
-                    hoveredStar = null;
-                    tooltip.style.display = 'none'; 
+                if (!focusedStarHovered) {
                     canvas.style.cursor = 'crosshair';
+                }
+            } else { 
+                hoveredStar = null;
+                if (focusedStarIndex !== null) {
+                    const fStar = stars[focusedStarIndex];
+                    if (fStar.isBought) {
+                        tooltip.style.display = 'block';
+                        tooltip.className = fStar.tier;
+                        let label = fStar.tier === 'supernova' ? '⚡ Supernova Core' : (fStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
+                        tooltip.innerHTML = `
+                            <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND STAR #${focusedStarIndex}</div>
+                            <div class="tooltip-type" style="margin-top:5px;">${label}</div>
+                            <div class="tooltip-title">${fStar.user_name || 'Anonymous Buyer'}</div>
+                            <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${fStar.message}"</div>
+                            <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(fStar.x)} Y:${Math.round(fStar.y)} Z:${Math.round(fStar.z)}</div>
+                            <div class="tooltip-meta">Wallet: ${fStar.wallet_address ? fStar.wallet_address.substring(0,6)+'...'+fStar.wallet_address.substring(fStar.wallet_address.length-4) : 'Unknown'}</div>
+                        `;
+                        let left = fStar.screenX + 20;
+                        let top = fStar.screenY - 20;
+                        if (left + tooltip.offsetWidth > window.innerWidth) left = fStar.screenX - tooltip.offsetWidth - 20;
+                        if (top + tooltip.offsetHeight > window.innerHeight) top = window.innerHeight - tooltip.offsetHeight - 20;
+                        if (left < 10) left = 10;
+                        if (top < 10) top = 10;
+                        tooltip.style.left = `${left}px`;
+                        tooltip.style.top = `${top}px`;
+                    } else {
+                        tooltip.style.display = 'none';
+                    }
+                } else {
+                    tooltip.style.display = 'none';
                 }
             }
         });
         canvas.addEventListener('click', (e) => {
-            if (hoveredStar && hoveredStar.isBought) return;
-            
-            let closestStarIdx = 0;
-            // Если кликнули ровно по свободному соседу с наведенной мышкой — берём его ID сразу
-            if (hoveredStar && !hoveredStar.isBought) {
-                closestStarIdx = stars.indexOf(hoveredStar);
-            } else {
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                let minDist = Infinity;
+            if (hoveredStar) return;
+            tooltip.style.display = 'none';
 
-                for (let i = 0; i < numStars; i++) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+      
+            let closestStarIdx = 0;
+            let minDist = Infinity;
+
+            // Ищем клик только среди отображаемых в данный момент соседей
+            if (focusedStarIndex !== null) {
+                let startIdx = Math.max(0, focusedStarIndex - 5);
+                let endIdx = Math.min(numStars - 1, focusedStarIndex + 5);
+                for (let i = startIdx; i <= endIdx; i++) {
                     if (stars[i].isBought) continue;
-                    // Рассчитываем клик только по тем свободным звездам, которые видны (до 5000 и соседи)
-                    if (i >= 5000 && !stars[i].isNeighborOfBought) continue;
-                    
                     const dx = mouseX - stars[i].screenX;
                     const dy = mouseY - stars[i].screenY;
                     const dist = dx*dx + dy*dy;
                     if (dist < minDist) { minDist = dist; closestStarIdx = i; }
                 }
+                focusedStarIndex = closestStarIdx;
+            } else {
+                for (let i = 0; i < numStars; i++) {
+                    if (stars[i].isBought) continue;
+                    const dx = mouseX - stars[i].screenX;
+                    const dy = mouseY - stars[i].screenY;
+                    const dist = dx*dx + dy*dy;
+                    if (dist < minDist) { minDist = dist; closestStarIdx = i; }
+                }
+                focusedStarIndex = closestStarIdx;
             }
 
-            focusedStarIndex = null;
-            tooltip.style.display = 'none';
+            // Кластеризуем соседей для новой выбранной кликом звезды
+            if (focusedStarIndex !== null) {
+                const targetStar = stars[focusedStarIndex];
+                let startIdx = Math.max(0, focusedStarIndex - 5);
+                let endIdx = Math.min(numStars - 1, focusedStarIndex + 5);
+                for (let i = startIdx; i <= endIdx; i++) {
+                    if (i === focusedStarIndex) continue;
+                    const angle = (i - focusedStarIndex) * (Math.PI / 3);
+                    const radius = 50 + Math.abs(i - focusedStarIndex) * 20;
+                    stars[i].x = targetStar.x + Math.cos(angle) * radius;
+                    stars[i].y = targetStar.y + Math.sin(angle) * radius;
+                    stars[i].z = targetStar.z + (i - focusedStarIndex) * 5;
+                }
+            }
 
             activeClickedStarNumber = closestStarIdx;
             const cStar = stars[closestStarIdx];
@@ -649,13 +684,6 @@
             stars[activeClickedStarNumber].tier = selectedTier;
             stars[activeClickedStarNumber].message = msgVal;
 
-            // После успешной покупки раскрываем новые 10 соседних звёзд на карте для следующих покупок подряд
-            for (let n = 1; n <= 5; n++) {
-                if (activeClickedStarNumber - n >= 0) stars[activeClickedStarNumber - n].isNeighborOfBought = true;
-                if (activeClickedStarNumber + n < numStars) stars[activeClickedStarNumber + n].isNeighborOfBought = true;
-            }
-            arrangeNeighbors(activeClickedStarNumber);
-
             alert(`Success! Star #${activeClickedStarNumber} is registered.`);
             
             ownerInput.value = ""; msgInput.value = "";
@@ -683,9 +711,12 @@
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-                // Оптимизация производительности: рендерим первые 5000 фоновых звезд + купленные + соседи купленных/поисковых звезд
-                const isFocusNeighbor = focusedStarIndex !== null && Math.abs(i - focusedStarIndex) <= 5;
-                if (i >= 5000 && !star.isBought && !star.isNeighborOfBought && !isFocusNeighbor) continue;
+                // Оптимизация производительности: рендерим ТОЛЬКО выбранную звезду и её 10 соседей (по 5 в каждую сторону). Все остальные пропускаются.
+                if (focusedStarIndex !== null) {
+                    if (i < focusedStarIndex - 5 || i > focusedStarIndex + 5) continue;
+                } else {
+                    continue;
+                }
                 // STATIC STARS
                // вращение отключено — звезды остаются неподвижными
 
@@ -719,7 +750,7 @@
                         size *= hoverPulse;
                     }
 
-                    // Рисуем яркий прицел вокруг сфокусированной через поиск звезды
+                    // NEW: Рисуем яркий прицел вокруг сфокусированной через поиск звезды
                     if (focusedStarIndex === i) {
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
