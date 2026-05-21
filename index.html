@@ -381,7 +381,7 @@
 
     <script>
         const SUPABASE_URL = "https://supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.[...]
         
         let supabase = null;
         if (typeof Supabase !== 'undefined') {
@@ -690,7 +690,7 @@
                         <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
-                        <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
+                        <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_addres[...]
                     `;
                     let left = randomScreenX + 20;
                     let top = randomScreenY - 20;
@@ -773,7 +773,7 @@
                     <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                     <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
-                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
+                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length[...]
                 `;
                 let left = e.clientX + 15;
                 let top = e.clientY + 15;
@@ -887,6 +887,7 @@
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
                 if (i >= 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
+                if (i < 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
 
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
