@@ -406,36 +406,31 @@
         let selectedPriceDoge = 7;
         let activeClickedStarNumber = null;
         let focusedStarIndex = null;
-        let pinnedStarIndex = null;
-        let pinnedTooltipHTML = '';
+        let previousFocusedIndex = null;  // tracks the last focused star so old neighbors can be hidden
+        let pinnedStarIndex = null;   // star pinned from the neighbors panel
+        let pinnedTooltipHTML = '';   // tooltip content for the pinned star
         let targetXOffset = 0;
         let targetYOffset = 0;
         let currentXOffset = 0;
         let currentYOffset = 0;
         let focusedStarHovered = false;
 
-        // Only these star indices are allowed to render (besides purchased stars).
-        // Rebuilt on every focus change — guarantees old glows can never reappear.
-        let visibleStarSet = new Set();
-
+        // --- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ СОСЕДЕЙ ---
         function isNeighborStar(i) {
-            return visibleStarSet.has(i);
+            return focusedStarIndex !== null && i >= focusedStarIndex - 5 && i <= focusedStarIndex + 5;
         }
 
-        // Switch focus: scatter old visible stars off-screen, build new set.
-        function setFocus(newCenter) {
-            for (const idx of visibleStarSet) {
-                if (!stars[idx].isBought) {
-                    stars[idx].x = (Math.random() < 0.5 ? -1 : 1) * (9000 + Math.random() * 3000);
-                    stars[idx].y = (Math.random() < 0.5 ? -1 : 1) * (9000 + Math.random() * 3000);
-                }
+        // Reset positions of stars that were neighbors of the old focus so they move off-screen
+        function clearPreviousNeighbors(oldCenter) {
+            if (oldCenter === null) return;
+            const rangeMin = Math.max(0, oldCenter - 5);
+            const rangeMax = Math.min(numStars - 1, oldCenter + 5);
+            for (let i = rangeMin; i <= rangeMax; i++) {
+                if (stars[i].isBought) continue; // keep purchased stars in place
+                // Scatter them far outside the viewport so they're invisible
+                stars[i].x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+                stars[i].y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
             }
-            visibleStarSet.clear();
-            focusedStarIndex = newCenter;
-            if (newCenter === null) return;
-            const lo = Math.max(0, newCenter - 5);
-            const hi = Math.min(numStars - 1, newCenter + 5);
-            for (let i = lo; i <= hi; i++) visibleStarSet.add(i);
         }
 
         // --- NEIGHBORS PANEL ---
@@ -448,14 +443,16 @@
         async function updateNeighborsPanel(centerIndex) {
             if (centerIndex === null) {
                 neighborsPanel.classList.remove('visible');
-                setFocus(null);
+                clearPreviousNeighbors(previousFocusedIndex);
+                previousFocusedIndex = null;
                 lastNeighborsFocus = null;
                 return;
             }
             if (centerIndex === lastNeighborsFocus) return;
 
-            // Atomically scatter old stars and define new visible set
-            setFocus(centerIndex);
+            // Clear old neighbors before showing new ones
+            clearPreviousNeighbors(previousFocusedIndex);
+            previousFocusedIndex = centerIndex;
             lastNeighborsFocus = centerIndex;
 
             const rangeMin = Math.max(0, centerIndex - 5);
@@ -549,7 +546,9 @@
                     const rScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
                     tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
                     tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
-                    setFocus(targetId);
+                    clearPreviousNeighbors(previousFocusedIndex);
+                    focusedStarIndex = targetId;
+                    previousFocusedIndex = targetId;
                     targetXOffset = 0;
                     targetYOffset = 0;
                     lastNeighborsFocus = null; // force panel refresh
@@ -717,7 +716,9 @@
             targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
             targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
             
-            setFocus(idVal);
+            clearPreviousNeighbors(previousFocusedIndex);
+            focusedStarIndex = idVal;
+            previousFocusedIndex = idVal;
             targetXOffset = 0;
             targetYOffset = 0;
             updateNeighborsPanel(idVal);
@@ -805,6 +806,7 @@
             }
 
             if (foundStar) {
+                focusedStarIndex = null;
                 hoveredStar = foundStar;
                 tooltip.style.display = 'block';
                 tooltip.className = foundStar.tier;
@@ -846,7 +848,9 @@
             if (nextFreeIdx === null) return; // all stars bought
 
             // Focus camera on that star
-            setFocus(nextFreeIdx);
+            clearPreviousNeighbors(previousFocusedIndex);
+            focusedStarIndex = nextFreeIdx;
+            previousFocusedIndex = nextFreeIdx;
             updateNeighborsPanel(nextFreeIdx);
 
             const paddingX = canvas.width * 0.15;
@@ -928,17 +932,7 @@
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-
-                // Strict render gate: purchased stars always show.
-                // Non-purchased stars only render if they are in visibleStarSet (current focus window ±5).
-                // Background field (i < 5000) shows ONLY when no focus is active.
-                if (!star.isBought) {
-                    if (visibleStarSet.size > 0) {
-                        if (!visibleStarSet.has(i)) continue;
-                    } else {
-                        if (i >= 5000) continue; // no focus: show ambient background only
-                    }
-                }
+                if (i >= 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
 
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
@@ -965,28 +959,35 @@
                     }
 
                     star.currentSize = size;
-                    if (focusedStarIndex === i && focusedStarHovered) {
-                        const hoverPulse = 2.4 + Math.sin(time * 10) * 0.3;
-                        size *= hoverPulse;
-                    }
 
                     if (focusedStarIndex === i) {
+                        // Hover pulse on the selected star
+                        if (focusedStarHovered) {
+                            size *= 2.4 + Math.sin(time * 10) * 0.3;
+                            auraColor = `rgba(255, 215, 0, 0.9)`;
+                        }
+                        // Glow ring — only on the selected star
                         ctx.beginPath();
                         ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
                         ctx.strokeStyle = '#ffd700';
                         ctx.lineWidth = 1.5;
                         ctx.stroke();
+                        // Full aura + core for selected star
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
+                        ctx.fillStyle = auraColor; ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                        ctx.fillStyle = starColor; ctx.fill();
+                    } else {
+                        // Neighbor / background / purchased stars: plain small dot, no glow ring
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 1.4, 0, Math.PI * 2);
+                        ctx.fillStyle = auraColor; ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                        ctx.fillStyle = starColor; ctx.fill();
                     }
-
-                    if (focusedStarIndex === i && focusedStarHovered) {
-                        auraColor = `rgba(255, 215, 0, 0.9)`;
-                    }
-                    ctx.beginPath();
-                    ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
-                    ctx.fillStyle = auraColor; ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
-                    ctx.fillStyle = starColor; ctx.fill();
                 }
             }
 
