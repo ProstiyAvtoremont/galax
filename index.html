@@ -87,6 +87,56 @@
             background: #fff;
         }
 
+        /* Promo / Info Box */
+        .promo-box {
+            position: absolute;
+            top: 72px;
+            left: 20px;
+            z-index: 15;
+            width: 230px;
+            background: rgba(5, 5, 15, 0.6);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            padding: 12px 14px 10px;
+        }
+        .promo-label {
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(255, 215, 0, 0.5);
+            margin-bottom: 7px;
+        }
+        .promo-text {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.82);
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        .promo-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .promo-btn {
+            flex: 1;
+            padding: 6px 0;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.35);
+            border-radius: 20px;
+            color: #ffd700;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            transition: background 0.25s, box-shadow 0.25s;
+            backdrop-filter: blur(8px);
+        }
+        .promo-btn:hover {
+            background: rgba(255, 215, 0, 0.22);
+            box-shadow: 0 0 14px rgba(255, 215, 0, 0.35);
+        }
+
         /* Hover Tooltip Card */
         #star-tooltip {
             position: absolute;
@@ -210,8 +260,8 @@
         /* Neighbors Panel */
         #neighbors-panel {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 220px;
+            left: 20px;
             z-index: 15;
             width: 230px;
             background: rgba(5, 5, 15, 0.85);
@@ -333,6 +383,16 @@
     <div class="search-container">
         <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
         <button id="search-btn" class="search-btn">SEARCH</button>
+    </div>
+
+    <!-- Promo / Info Box -->
+    <div class="promo-box">
+        <div class="promo-label">✦ Your Star Awaits</div>
+        <div class="promo-text">Cheaper than coffee. Longer lasting than anything else. Your personal digital star for just $1.</div>
+        <div class="promo-actions">
+            <button class="promo-btn" id="promo-about-btn">ABOUT</button>
+            <button class="promo-btn" id="promo-tutorial-btn">TUTORIAL</button>
+        </div>
     </div>
 
     <canvas id="starfield"></canvas>
