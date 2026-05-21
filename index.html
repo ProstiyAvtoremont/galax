@@ -946,7 +946,7 @@
                     let starColor = `rgba(255, 235, 120, ${brightness})`;
                     let auraColor = `rgba(255, 215, 0, ${brightness * 0.15})`;
 
-                    if (star.isBought) {
+                    if (star.isBought && focusedStarIndex === i) {
                         if (star.tier === 'basic') { size *= 2.0;
                             starColor = `rgba(255, 235, 120, 1)`; } 
                         else if (star.tier === 'supernova') {
@@ -956,6 +956,10 @@
                             size *= 3.8;
                             starColor = `rgba(0, 255, 255, 1)`; auraColor = `rgba(0, 255, 255, 0.4)`;
                         }
+                    } else if (star.isBought) {
+                        // Non-focused purchased star: slightly brighter than a free star but no big aura
+                        size *= 1.4;
+                        starColor = `rgba(255, 235, 120, 0.7)`;
                     }
 
                     star.currentSize = size;
