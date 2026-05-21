@@ -932,7 +932,14 @@
 
             for (let i = 0; i < numStars; i++) {
                 const star = stars[i];
-                if (i >= 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
+
+                // Visibility: show if purchased, OR in focus window, OR background (i<5000) when no focus is active
+                const inFocusWindow = focusedStarIndex !== null
+                    && i >= focusedStarIndex - 5
+                    && i <= focusedStarIndex + 5;
+                const showAsBackground = i < 5000 && focusedStarIndex === null;
+                if (!star.isBought && !inFocusWindow && !showAsBackground) continue;
+
 
                 const factor = 800 / (star.z + globalZOffset + 1);
                 star.screenX = cx + (star.x + currentXOffset) * factor; 
