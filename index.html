@@ -602,6 +602,25 @@
                     }, 200);
                 });
 
+                // Double-click on an Available row opens the purchase modal for that star
+                if (!isPurchased) {
+                    item.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        const tStar = stars[i];
+                        activeClickedStarNumber = i;
+                        focusedStarIndex = i;
+                        const paddingX = canvas.width * 0.15;
+                        const paddingY = canvas.height * 0.15;
+                        const rScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
+                        const rScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+                        tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
+                        tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
+                        document.getElementById('modal-title').innerText = `Claim Star #${i} (${Math.round(tStar.x)}, ${Math.round(tStar.y)})`;
+                        modal.style.display = 'block';
+                        setTimeout(() => modal.classList.add('active'), 10);
+                    });
+                }
+
                 neighborsList.appendChild(item);
             }
         }
