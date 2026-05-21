@@ -543,21 +543,24 @@
             neighborsLoading.textContent = '';
             neighborsList.innerHTML = '';
 
-            // Spread the new neighbor stars across the visible canvas
+            // Spread the new neighbor stars across the free sky zone
             const slots = rangeMax - rangeMin + 1;
+            const freeMargin = 40;
+            const freeLeft = 270 + freeMargin;
+            const freeRight = canvas.width - freeMargin;
+            const freeTop = freeMargin;
+            const freeBottom = canvas.height - 90 - freeMargin;
+            const cols = 4, rows = Math.ceil(slots / 4);
+            const cellW = (freeRight - freeLeft) / cols;
+            const cellH = (freeBottom - freeTop) / Math.max(rows, 1);
             let slot = 0;
             for (let i = rangeMin; i <= rangeMax; i++) {
-                if (i === centerIndex) { slot++; continue; } // center is already positioned by search/click
-                if (stars[i].isBought) { slot++; continue; } // purchased stars stay where they are
-                const col = slot % 4;
-                const row = Math.floor(slot / 4);
-                const cols = 4, rows = Math.ceil(slots / cols);
-                const marginX = canvas.width  * 0.12;
-                const marginY = canvas.height * 0.12;
-                const cellW = (canvas.width  - marginX * 2) / cols;
-                const cellH = (canvas.height - marginY * 2) / Math.max(rows, 1);
-                const sx = marginX + cellW * col + cellW * (0.2 + Math.random() * 0.6);
-                const sy = marginY + cellH * row + cellH * (0.2 + Math.random() * 0.6);
+                if (i === centerIndex) { slot++; continue; }
+                if (stars[i].isBought) { slot++; continue; }
+                const col = slot % cols;
+                const row = Math.floor(slot / cols);
+                const sx = freeLeft + cellW * col + cellW * (0.2 + Math.random() * 0.6);
+                const sy = freeTop  + cellH * row + cellH * (0.2 + Math.random() * 0.6);
                 stars[i].x = (sx - cx) * (stars[i].z + 1) / 800;
                 stars[i].y = (sy - cy) * (stars[i].z + 1) / 800;
                 slot++;
@@ -599,11 +602,8 @@
                     pinnedStarIndex = null;
                     tooltip.style.display = 'none';
 
-                    // Position the star in the centre of the visible area
-                    const paddingX = canvas.width * 0.15;
-                    const paddingY = canvas.height * 0.15;
-                    const rScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
-                    const rScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+                    // Position the star in free sky area (away from panels)
+                    const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
                     tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
                     tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
                     clearPreviousNeighbors(previousFocusedIndex);
@@ -669,10 +669,7 @@
                         const tStar = stars[i];
                         activeClickedStarNumber = i;
                         focusedStarIndex = i;
-                        const paddingX = canvas.width * 0.15;
-                        const paddingY = canvas.height * 0.15;
-                        const rScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
-                        const rScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+                        const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
                         tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
                         tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
                         document.getElementById('modal-title').innerText = `Claim Star #${i} (${Math.round(tStar.x)}, ${Math.round(tStar.y)})`;
@@ -691,6 +688,24 @@
         }
         window.addEventListener('resize', resize);
         resize();
+
+        // Returns a random {sx, sy} guaranteed to fall in the open sky area —
+        // away from the left-side panels (search + promo + neighbors) and the bottom bar.
+        function getFreeZonePoint() {
+            // Left panel column: ~260px wide, full height
+            // Bottom bar: ~80px tall
+            // Small margin so the star isn't flush against a panel edge
+            const margin = 40;
+            const leftBlocked = 270;   // width of left-side UI column
+            const bottomBlocked = 90;  // height of bottom controls bar
+            const minX = leftBlocked + margin;
+            const maxX = canvas.width  - margin;
+            const minY = margin;
+            const maxY = canvas.height - bottomBlocked - margin;
+            const sx = minX + Math.random() * (maxX - minX);
+            const sy = minY + Math.random() * (maxY - minY);
+            return { sx, sy };
+        }
 
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
@@ -791,10 +806,7 @@
             }
 
             const targetStar = stars[idVal];
-            const paddingX = canvas.width * 0.15;
-            const paddingY = canvas.height * 0.15;
-            const randomScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
-            const randomScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+            const { sx: randomScreenX, sy: randomScreenY } = getFreeZonePoint();
 
             targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
             targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
@@ -936,10 +948,7 @@
             previousFocusedIndex = nextFreeIdx;
             updateNeighborsPanel(nextFreeIdx);
 
-            const paddingX = canvas.width * 0.15;
-            const paddingY = canvas.height * 0.15;
-            const rScreenX = paddingX + Math.random() * (canvas.width - paddingX * 2);
-            const rScreenY = paddingY + Math.random() * (canvas.height - paddingY * 2);
+            const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
             const nStar = stars[nextFreeIdx];
             nStar.x = (rScreenX - cx) * (nStar.z + 1) / 800;
             nStar.y = (rScreenY - cy) * (nStar.z + 1) / 800;
