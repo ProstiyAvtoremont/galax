@@ -381,7 +381,7 @@
 
     <script>
         const SUPABASE_URL = "https://supabase.co";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.[...]
         
         let supabase = null;
         if (typeof Supabase !== 'undefined') {
@@ -413,10 +413,56 @@
         let currentXOffset = 0;
         let currentYOffset = 0;
         let focusedStarHovered = false;
+        let visibleNeighborNumbers = [];  // Track visible star numbers from neighbors panel
 
         // --- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ СОСЕДЕЙ ---
         function isNeighborStar(i) {
             return focusedStarIndex !== null && i >= focusedStarIndex - 5 && i <= focusedStarIndex + 5;
+        }
+
+        // --- FUNCTION TO DISPLAY STAR NUMBERS ON CANVAS ---
+        function renderNeighborStarNumbers() {
+            if (visibleNeighborNumbers.length === 0) return;
+
+            ctx.save();
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let starNum of visibleNeighborNumbers) {
+                const star = stars[starNum];
+                if (!star) continue;
+
+                // Only render if star is on screen
+                if (star.screenX >= 0 && star.screenX <= canvas.width && 
+                    star.screenY >= 0 && star.screenY <= canvas.height) {
+                    
+                    // Determine text color based on star state
+                    let textColor = 'rgba(255, 215, 0, 0.6)';  // default golden
+                    if (star.isBought) {
+                        if (star.tier === 'supernova') {
+                            textColor = 'rgba(255, 51, 102, 0.8)';  // supernova red
+                        } else if (star.tier === 'constellation') {
+                            textColor = 'rgba(0, 255, 255, 0.8)';   // constellation cyan
+                        } else {
+                            textColor = 'rgba(255, 235, 120, 0.8)'; // basic bright gold
+                        }
+                    }
+
+                    // Draw text offset below the star
+                    ctx.fillStyle = textColor;
+                    ctx.fillText(`#${starNum}`, star.screenX, star.screenY + star.currentSize * 3 + 15);
+
+                    // Optional: add a subtle outline for better readability
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(`#${starNum}`, star.screenX, star.screenY + star.currentSize * 3 + 15);
+                    ctx.fillStyle = textColor;
+                    ctx.fillText(`#${starNum}`, star.screenX, star.screenY + star.currentSize * 3 + 15);
+                }
+            }
+
+            ctx.restore();
         }
 
         // --- NEIGHBORS PANEL ---
@@ -430,6 +476,7 @@
             if (centerIndex === null) {
                 neighborsPanel.classList.remove('visible');
                 lastNeighborsFocus = null;
+                visibleNeighborNumbers = [];  // Clear visible numbers
                 return;
             }
             if (centerIndex === lastNeighborsFocus) return;
@@ -437,6 +484,12 @@
 
             const rangeMin = Math.max(0, centerIndex - 5);
             const rangeMax = Math.min(numStars - 1, centerIndex + 5);
+
+            // Update visible neighbor numbers
+            visibleNeighborNumbers = [];
+            for (let i = rangeMin; i <= rangeMax; i++) {
+                visibleNeighborNumbers.push(i);
+            }
 
             neighborsTitle.textContent = `Stars #${rangeMin} – #${rangeMax}`;
             neighborsLoading.textContent = 'Loading…';
@@ -690,7 +743,7 @@
                         <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
-                        <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_address.length-4) : 'Unknown'}</div>
+                        <div class="tooltip-meta">Wallet: ${targetStar.wallet_address ? targetStar.wallet_address.substring(0,6)+'...'+targetStar.wallet_address.substring(targetStar.wallet_addres[...]
                     `;
                     let left = randomScreenX + 20;
                     let top = randomScreenY - 20;
@@ -773,7 +826,7 @@
                     <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
                     <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                     <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
-                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length-4) : 'Unknown'}</div>
+                    <div class="tooltip-meta">Wallet: ${foundStar.wallet_address ? foundStar.wallet_address.substring(0,6)+'...'+foundStar.wallet_address.substring(foundStar.wallet_address.length[...]
                 `;
                 let left = e.clientX + 15;
                 let top = e.clientY + 15;
@@ -937,6 +990,9 @@
                     ctx.fillStyle = starColor; ctx.fill();
                 }
             }
+
+            // Render star numbers from neighbors panel
+            renderNeighborStarNumbers();
 
             if (globalZOffset < 500) {
                 for (let i = 0; i < numParticles; i++) {
