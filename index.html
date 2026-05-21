@@ -700,6 +700,10 @@
             });
         });
 
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') searchBtn.click();
+        });
+
         searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
