@@ -453,6 +453,7 @@
             try {
                 if (window.supabase && window.supabase.createClient) {
                     db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log("Supabase initialised.");
                     loadPurchasedStars();
                 } else {
                     console.error("Supabase library not available.");
@@ -462,15 +463,9 @@
             }
         }
 
-        // Wait for the Supabase script tag to finish loading
-        const supabaseScript = document.querySelector('script[src*="supabase"]');
-        if (supabaseScript) {
-            supabaseScript.addEventListener('load', initSupabase);
-            // If already loaded (cached), fire immediately
-            if (window.supabase && window.supabase.createClient) initSupabase();
-        } else {
-            initSupabase();
-        }
+        // Supabase script is in <head> so it's already loaded by the time
+        // this <body> script runs — call initSupabase directly after stars are built.
+        // loadPurchasedStars() is called from initSupabase() below the stars loop.
 
         const canvas = document.getElementById('starfield');
         const ctx = canvas.getContext('2d');
@@ -754,6 +749,9 @@
                 currentSize: 0
             });
         }
+
+        // Stars array is ready and Supabase CDN is already loaded — init now
+        initSupabase();
 
         async function loadPurchasedStars() {
             if (!db) return;
