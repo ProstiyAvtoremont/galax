@@ -608,17 +608,24 @@
                     pinnedStarIndex = null;
                     tooltip.style.display = 'none';
 
+                    // Update selected highlight in the panel without rebuilding it
+                    neighborsList.querySelectorAll('.neighbor-item').forEach(el => el.classList.remove('is-selected'));
+                    item.classList.add('is-selected');
+                    neighborsList.querySelectorAll('.neighbor-num').forEach(el => {
+                        el.classList.remove('is-selected-num');
+                        el.textContent = el.textContent.replace(' ◀', '');
+                    });
+                    const thisNum = item.querySelector('.neighbor-num');
+                    if (thisNum) { thisNum.classList.add('is-selected-num'); thisNum.textContent += ' ◀'; }
+
                     // Position the star in free sky area (away from panels)
                     const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
                     tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
                     tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
-                    clearPreviousNeighbors(previousFocusedIndex);
                     focusedStarIndex = targetId;
-                    previousFocusedIndex = targetId;
                     targetXOffset = 0;
                     targetYOffset = 0;
-                    lastNeighborsFocus = null; // force panel refresh
-                    updateNeighborsPanel(targetId);
+                    // Do NOT call updateNeighborsPanel here — avoids flicker and preserves dblclick
 
                     // Build tooltip content
                     const row = dbMap[targetId];
