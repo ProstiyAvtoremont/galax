@@ -444,7 +444,7 @@
     </div>
 
     <script>
-        const SUPABASE_URL = "https://supabase.co";
+        const SUPABASE_URL = "https://xfltnkwrkixnmgyonqrt.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
         
         let supabase = null;
@@ -990,11 +990,20 @@
             payBtn.innerText = "Saving to Space Grid...";
             try {
                 if (supabase) {
-                    await supabase.from('purchased_stars').insert([
+                    const { error } = await supabase.from('purchased_stars').insert([
                         { star_number: activeClickedStarNumber, user_name: userNameVal, wallet_address: userWalletAddress, tier: selectedTier, message: msgVal }
                     ]);
+                    if (error) {
+                        console.error("Supabase insert error:", error.message);
+                        alert(`⚠️ Star registered locally but database save failed: ${error.message}`);
+                    }
+                } else {
+                    console.warn("Supabase not initialised — data saved locally only.");
                 }
-            } catch (err) { console.error("Database sync issue:", err.message); }
+            } catch (err) {
+                console.error("Database sync issue:", err.message);
+                alert(`⚠️ Database error: ${err.message}`);
+            }
 
             stars[activeClickedStarNumber].isBought = true;
             stars[activeClickedStarNumber].user_name = userNameVal;
