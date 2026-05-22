@@ -448,10 +448,28 @@
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
 
         let db = null;
-        try {
-            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        } catch(e) {
-            console.error("Supabase init error:", e.message);
+
+        function initSupabase() {
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    loadPurchasedStars();
+                } else {
+                    console.error("Supabase library not available.");
+                }
+            } catch(e) {
+                console.error("Supabase init error:", e.message);
+            }
+        }
+
+        // Wait for the Supabase script tag to finish loading
+        const supabaseScript = document.querySelector('script[src*="supabase"]');
+        if (supabaseScript) {
+            supabaseScript.addEventListener('load', initSupabase);
+            // If already loaded (cached), fire immediately
+            if (window.supabase && window.supabase.createClient) initSupabase();
+        } else {
+            initSupabase();
         }
 
         const canvas = document.getElementById('starfield');
@@ -757,8 +775,6 @@
                 console.error("Supabase data mapping failed:", err);
             }
         }
-        loadPurchasedStars();
-
         const numParticles = 100;
         const particles = [];
         const flySpeed = 5;
