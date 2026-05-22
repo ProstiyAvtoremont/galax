@@ -447,15 +447,9 @@
         const SUPABASE_URL = "https://xfltnkwrkixnmgyonqrt.supabase.co";
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
 
-        let supabase = null;
+        let db = null;
         try {
-            if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            } else if (typeof Supabase !== 'undefined' && Supabase.createClient) {
-                supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            } else {
-                console.error("Supabase library failed to load.");
-            }
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         } catch(e) {
             console.error("Supabase init error:", e.message);
         }
@@ -537,9 +531,9 @@
 
             // Fetch from Supabase for this range
             let dbMap = {};
-            if (supabase) {
+            if (db) {
                 try {
-                    const { data, error } = await supabase
+                    const { data, error } = await db
                         .from('purchased_stars')
                         .select('star_number, user_name, tier, message')
                         .gte('star_number', rangeMin)
@@ -744,9 +738,9 @@
         }
 
         async function loadPurchasedStars() {
-            if (!supabase) return;
+            if (!db) return;
             try {
-                const { data, error } = await supabase.from('purchased_stars').select('star_number, user_name, wallet_address, tier, message');
+                const { data, error } = await db.from('purchased_stars').select('star_number, user_name, wallet_address, tier, message');
                 if (!error && data) {
                     data.forEach(row => {
                         const idx = row.star_number;
@@ -997,10 +991,14 @@
 
             payBtn.innerText = "Saving to Space Grid...";
             try {
-                if (supabase) {
-                    await supabase.from('purchased_stars').insert([
+                if (db) {
+                    const { error } = await db.from('purchased_stars').insert([
                         { star_number: activeClickedStarNumber, user_name: userNameVal, wallet_address: userWalletAddress, tier: selectedTier, message: msgVal }
                     ]);
+                    if (error) {
+                        console.error("Supabase insert error:", error.message);
+                        alert(`⚠️ Database save failed: ${error.message}`);
+                    }
                 }
             } catch (err) { console.error("Database sync issue:", err.message); }
 
