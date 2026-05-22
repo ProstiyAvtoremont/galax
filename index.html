@@ -526,7 +526,6 @@
 
             neighborsTitle.textContent = `Stars #${rangeMin} – #${rangeMax}`;
             neighborsLoading.textContent = 'Loading…';
-            neighborsList.innerHTML = '';
             neighborsPanel.classList.add('visible');
 
             // Fetch from Supabase for this range
@@ -547,6 +546,7 @@
             }
 
             neighborsLoading.textContent = '';
+            // Only clear and rebuild once fetch is done — prevents flicker
             neighborsList.innerHTML = '';
 
             // Spread the new neighbor stars across the free sky zone
@@ -626,6 +626,11 @@
                     targetXOffset = 0;
                     targetYOffset = 0;
                     // Do NOT call updateNeighborsPanel here — avoids flicker and preserves dblclick
+
+                    // If clicked star is outside the current panel's center, refresh the panel
+                    if (targetId !== lastNeighborsFocus) {
+                        updateNeighborsPanel(targetId);
+                    }
 
                     // Build tooltip content
                     const row = dbMap[targetId];
