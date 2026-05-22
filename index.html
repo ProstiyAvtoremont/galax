@@ -449,20 +449,6 @@
 
         let db = null;
 
-        function initSupabase() {
-            try {
-                if (window.supabase && window.supabase.createClient) {
-                    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    console.log("Supabase initialised.");
-                    loadPurchasedStars();
-                } else {
-                    console.error("Supabase library not available.");
-                }
-            } catch(e) {
-                console.error("Supabase init error:", e.message);
-            }
-        }
-
         // Supabase script is in <head> so it's already loaded by the time
         // this <body> script runs — call initSupabase directly after stars are built.
         // loadPurchasedStars() is called from initSupabase() below the stars loop.
@@ -493,6 +479,7 @@
         let currentXOffset = 0;
         let currentYOffset = 0;
         let focusedStarHovered = false;
+        let startTime = 0;
 
         // --- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ СОСЕДЕЙ ---
         function isNeighborStar(i) {
@@ -750,17 +737,34 @@
             });
         }
 
-        // Stars array is ready and Supabase CDN is already loaded — init now
-        initSupabase();
+        // Stars array is ready — init Supabase, load purchased stars, then start rendering
+        async function initSupabaseAndStart() {
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    await loadPurchasedStars(); // wait for DB before first render
+                } else {
+                    console.error("Supabase library not available.");
+                }
+            } catch(e) {
+                console.error("Supabase init error:", e.message);
+            }
+            // Start rendering only after purchased stars are loaded
+            startTime = Date.now();
+            animate();
+        }
+        initSupabaseAndStart();
 
         async function loadPurchasedStars() {
-            if (!db) return;
+            if (!db) { console.error("loadPurchasedStars: db is null"); return; }
             try {
                 const { data, error } = await db.from('purchased_stars').select('star_number, user_name, wallet_address, tier, message');
-                if (!error && data) {
+                if (error) { console.error("loadPurchasedStars error:", error.message); return; }
+                if (data) {
+                    console.log(`loadPurchasedStars: loaded ${data.length} stars from DB`);
                     data.forEach(row => {
                         const idx = row.star_number;
-                        if (idx !== null && idx < numStars) {
+                        if (idx !== null && idx >= 0 && idx < numStars) {
                             stars[idx].isBought = true;
                             stars[idx].user_name = row.user_name;
                             stars[idx].wallet_address = row.wallet_address;
@@ -1127,8 +1131,6 @@
             }
             requestAnimationFrame(animate);
         }
-        let startTime = Date.now();
-        animate();
     </script>
 </body>
 </html>
