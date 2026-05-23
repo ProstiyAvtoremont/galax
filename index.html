@@ -376,6 +376,54 @@
             text-overflow: ellipsis;
             margin-top: 1px;
         }
+        /* Info Overlay */
+        #info-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(1, 1, 8, 0.92);
+            backdrop-filter: blur(18px);
+            cursor: pointer;
+            overflow-y: auto;
+        }
+        #info-overlay.visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .info-overlay-inner {
+            max-width: 680px;
+            width: 90%;
+            margin: 60px auto;
+            padding: 48px 52px;
+            background: rgba(5, 5, 20, 0.7);
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            border-radius: 24px;
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.08);
+            pointer-events: none;
+        }
+        .info-overlay-label {
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: rgba(255, 215, 0, 0.55);
+            margin-bottom: 20px;
+        }
+        .info-overlay-text {
+            font-size: 15px;
+            line-height: 1.85;
+            color: rgba(255, 255, 255, 0.88);
+            white-space: pre-wrap;
+        }
+        .info-overlay-hint {
+            margin-top: 36px;
+            font-size: 11px;
+            color: rgba(255, 215, 0, 0.35);
+            text-align: center;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
 <body>
@@ -391,11 +439,11 @@
         <div class="promo-text">Cheaper than coffee. Longer lasting than anything else. Your personal digital star for just $1.</div>
         <div class="promo-actions">
             <button class="promo-btn" id="promo-about-btn">ABOUT</button>
-            <button class="promo-btn" id="promo-tutorial-btn">TUTORIAL</button>
+            <button class="promo-btn" id="promo-tutorial-btn">HOW TO USE</button>
         </div>
         <div class="promo-actions" style="margin-top: 8px;">
             <button class="promo-btn" id="promo-tos-btn">ToS</button>
-            <button class="promo-btn" id="promo-faq-btn">FAQ</button>
+            <button class="promo-btn" id="promo-faq-btn">FOR YOU</button>
         </div>
     </div>
 
@@ -406,6 +454,15 @@
     </div>
 
     <div id="star-tooltip"></div>
+
+    <!-- Info Overlay (About / How to use / ToS / For You) -->
+    <div id="info-overlay">
+        <div class="info-overlay-inner">
+            <div class="info-overlay-label" id="info-overlay-label"></div>
+            <div class="info-overlay-text" id="info-overlay-text"></div>
+            <div class="info-overlay-hint">✦ click anywhere to close</div>
+        </div>
+    </div>
 
     <!-- Neighbors Panel -->
     <div id="neighbors-panel">
@@ -530,19 +587,13 @@
 
             // Fetch from Supabase for this range
             let dbMap = {};
-            if (db) {
-                try {
-                    const { data, error } = await db
-                        .from('purchased_stars')
-                        .select('star_number, user_name, tier, message')
-                        .gte('star_number', rangeMin)
-                        .lte('star_number', rangeMax);
-                    if (!error && data) {
-                        data.forEach(row => { dbMap[row.star_number] = row; });
-                    }
-                } catch (err) {
-                    console.error('Neighbors fetch error:', err);
-                }
+            try {
+                const data = await fetchFromDB(
+                    SUPABASE_URL + '/rest/v1/purchased_stars?select=star_number,user_name,tier,message&star_number=gte.' + rangeMin + '&star_number=lte.' + rangeMax
+                );
+                data.forEach(function(row) { dbMap[row.star_number] = row; });
+            } catch (err) {
+                console.warn('Neighbors fetch error:', String(err));
             }
 
             neighborsLoading.textContent = '';
@@ -767,26 +818,36 @@
         }
         initSupabaseAndStart();
 
-        async function loadPurchasedStars() {
-            if (!db) { console.error("loadPurchasedStars: db is null"); return; }
-            try {
-                const { data, error } = await db.from('purchased_stars').select('star_number, user_name, wallet_address, tier, message');
-                if (error) { console.error("loadPurchasedStars error:", error.message); return; }
-                if (data) {
-                    console.log(`loadPurchasedStars: loaded ${data.length} stars from DB`);
-                    data.forEach(row => {
-                        const idx = row.star_number;
-                        if (idx !== null && idx >= 0 && idx < numStars) {
-                            stars[idx].isBought = true;
-                            stars[idx].user_name = row.user_name;
-                            stars[idx].wallet_address = row.wallet_address;
-                            stars[idx].tier = row.tier || 'basic';
-                            stars[idx].message = row.message || 'To the moon! 🚀';
-                        }
-                    });
+        async function fetchFromDB(url) {
+            const res = await fetch(url, {
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+                    'Accept': 'application/json'
                 }
-            } catch (err) {
-                console.error("Supabase data mapping failed:", err);
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        }
+
+        async function loadPurchasedStars() {
+            try {
+                const data = await fetchFromDB(
+                    SUPABASE_URL + '/rest/v1/purchased_stars?select=star_number,user_name,wallet_address,tier,message&limit=100000'
+                );
+                console.log("loadPurchasedStars: loaded " + data.length + " stars from DB");
+                data.forEach(function(row) {
+                    const idx = row.star_number;
+                    if (idx !== null && idx >= 0 && idx < numStars) {
+                        stars[idx].isBought       = true;
+                        stars[idx].user_name      = row.user_name;
+                        stars[idx].wallet_address = row.wallet_address;
+                        stars[idx].tier           = row.tier    || 'basic';
+                        stars[idx].message        = row.message || 'To the moon! 🚀';
+                    }
+                });
+            } catch (e) {
+                console.warn("loadPurchasedStars failed:", String(e));
             }
         }
         const numParticles = 100;
@@ -1143,6 +1204,64 @@
             }
             requestAnimationFrame(animate);
         }
+        // --- INFO OVERLAY (About / How to use / ToS / For You) ---
+        const infoOverlay = document.getElementById('info-overlay');
+        const infoLabel   = document.getElementById('info-overlay-label');
+        const infoText    = document.getElementById('info-overlay-text');
+
+        const infoContent = {
+            about: {
+                label: '✦ About',
+                text: `The idea for this project came about one lonely evening when I was looking at the sky and thought, "Who else can look at this sky with me, and how many stars can there be in this boundless space? What if we created a digital star space where everyone could have a star?"
+
+That's where it all began and grew into this creation! Now, you can not only acquire your own personal star but also know who owns the star next to you. And most importantly, this is digital eternity, where you will always have your own private corner for contemplating the starry sky while listening to pleasant ambient music.
+
+Don't forget to look at the stars nearby; perhaps the person far away from you is actually much closer, and the glow of their star will bring you positive emotions. Welcome to this boundless, mysterious, and eternal star space.`
+            },
+            howto: {
+                label: '✦ How to Use',
+                text: `Becoming the owner of a star is very simple. If you click on the galaxy screen, a window will appear offering the opportunity to purchase a star. Clicking on the screen allows you to purchase a star by its serial number from those available for sale. If you want to purchase a star with a specific number, enter that number in the search box, and you'll be able to purchase the star with that number.
+
+Stars are divided into three types, each based on their visibility when searching in galactic space. However, the operating principle, search, and display are the same for all stars.
+
+After selecting a star number, you'll need to enter the owner's information, name, or nickname. This is what will be displayed when searching for your star on the galaxy map.
+
+Next, you can leave a message for the universe, a message for the people who will be your allies and companions in this galactic space. Perhaps it's a wise saying, a link to your social media profile, or simply a message addressed to someone else. The choice is yours.
+
+After that, click the payment button, and after the payment is completed, you will become the owner of your star and receive digital immortality.`
+            },
+            tos: {
+                label: '✦ Terms of Service',
+                text: `By clicking the purchase button, you automatically agree to the information below, so we recommend that you read this guide carefully!
+
+This project was created to unite people of all faiths, races, and backgrounds. This stellar world encompasses peace, tranquility, and positivity for everyone. Here, we forget loneliness, hostility, and evil intentions. Please keep this in mind before using this website.
+
+Users who disrupt the peace and balance of this universe will lose their membership in this community. If you plan to spread chaos and negativity, please remember: your data will be deleted, the star will be cleansed of negative energy, and, worst of all, you will not receive any financial compensation.
+
+Please respect each other, maintain decorum, and use correct reasoning in your messages to the universe.`
+            },
+            foryou: {
+                label: '✦ For You',
+                text: `If you're reading this message, you're not alone. We're here, we're with you, enjoying this boundless world of stars.`
+            }
+        };
+
+        function showInfoOverlay(key) {
+            const content = infoContent[key];
+            infoLabel.textContent = content.label;
+            infoText.textContent  = content.text;
+            infoOverlay.classList.add('visible');
+        }
+
+        infoOverlay.addEventListener('click', () => {
+            infoOverlay.classList.remove('visible');
+        });
+
+        document.getElementById('promo-about-btn').addEventListener('click',    () => showInfoOverlay('about'));
+        document.getElementById('promo-tutorial-btn').addEventListener('click', () => showInfoOverlay('howto'));
+        document.getElementById('promo-tos-btn').addEventListener('click',      () => showInfoOverlay('tos'));
+        document.getElementById('promo-faq-btn').addEventListener('click',      () => showInfoOverlay('foryou'));
+
     </script>
 </body>
 </html>
