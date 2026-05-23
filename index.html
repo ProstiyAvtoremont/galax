@@ -587,13 +587,19 @@
 
             // Fetch from Supabase for this range
             let dbMap = {};
-            try {
-                const data = await fetchFromDB(
-                    SUPABASE_URL + '/rest/v1/purchased_stars?select=star_number,user_name,tier,message&star_number=gte.' + rangeMin + '&star_number=lte.' + rangeMax
-                );
-                data.forEach(function(row) { dbMap[row.star_number] = row; });
-            } catch (err) {
-                console.warn('Neighbors fetch error:', String(err));
+            if (db) {
+                try {
+                    const { data, error } = await db
+                        .from('purchased_stars')
+                        .select('star_number, user_name, tier, message')
+                        .gte('star_number', rangeMin)
+                        .lte('star_number', rangeMax);
+                    if (!error && data) {
+                        data.forEach(function(row) { dbMap[row.star_number] = row; });
+                    }
+                } catch (err) {
+                    console.warn('Neighbors fetch error:', String(err));
+                }
             }
 
             neighborsLoading.textContent = '';
@@ -818,23 +824,14 @@
         }
         initSupabaseAndStart();
 
-        async function fetchFromDB(url) {
-            const res = await fetch(url, {
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-                    'Accept': 'application/json'
-                }
-            });
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.json();
-        }
-
         async function loadPurchasedStars() {
+            if (!db) { console.warn("loadPurchasedStars: db not ready"); return; }
             try {
-                const data = await fetchFromDB(
-                    SUPABASE_URL + '/rest/v1/purchased_stars?select=star_number,user_name,wallet_address,tier,message&limit=100000'
-                );
+                const { data, error } = await db
+                    .from('purchased_stars')
+                    .select('star_number, user_name, wallet_address, tier, message');
+                if (error) { console.warn("loadPurchasedStars DB error:", String(error.message)); return; }
+                if (!data) return;
                 console.log("loadPurchasedStars: loaded " + data.length + " stars from DB");
                 data.forEach(function(row) {
                     const idx = row.star_number;
@@ -1027,16 +1024,23 @@
 
         canvas.addEventListener('click', (e) => {
             if (hoveredStar) return;
+
+            // If a star is currently focused (from search or panel), just clear the pin and tooltip
+            if (focusedStarIndex !== null || pinnedStarIndex !== null) {
+                pinnedStarIndex = null;
+                tooltip.style.display = 'none';
+                return;
+            }
+
             tooltip.style.display = 'none';
 
-            // Find the next free star in ascending order (0, 1, 2, ...)
+            // No star focused — find the next free star and open purchase modal
             let nextFreeIdx = null;
             for (let i = 0; i < numStars; i++) {
                 if (!stars[i].isBought) { nextFreeIdx = i; break; }
             }
-            if (nextFreeIdx === null) return; // all stars bought
+            if (nextFreeIdx === null) return;
 
-            // Focus camera on that star
             clearPreviousNeighbors(previousFocusedIndex);
             focusedStarIndex = nextFreeIdx;
             previousFocusedIndex = nextFreeIdx;
@@ -1049,7 +1053,6 @@
             targetXOffset = 0;
             targetYOffset = 0;
 
-            // Open purchase modal for this free star
             activeClickedStarNumber = nextFreeIdx;
             document.getElementById('modal-title').innerText = `Claim Star #${nextFreeIdx} (${Math.round(nStar.x)}, ${Math.round(nStar.y)})`;
             modal.style.display = 'block';
