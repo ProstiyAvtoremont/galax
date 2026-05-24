@@ -260,7 +260,7 @@
         /* Neighbors Panel */
         #neighbors-panel {
             position: absolute;
-            top: 220px;
+            top: 240px;
             left: 20px;
             z-index: 15;
             width: 230px;
@@ -294,7 +294,7 @@
             color: #888;
         }
         #neighbors-list {
-            max-height: 380px;
+            max-height: calc(100vh - 340px);
             overflow-y: auto;
             padding: 6px 0;
         }
@@ -494,7 +494,7 @@
         </div>
         <div class="input-group">
             <label for="star-msg">Your Message</label>
-            <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="60">
+            <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="80">
         </div>
 
         <button class="pay-btn" id="pay-btn">Proceed to Web3 Payment</button>
@@ -697,7 +697,6 @@
                         const uName = (row && row.user_name) || tStar.user_name || 'Anonymous Buyer';
                         const uMsg  = (row && row.message)   || tStar.message   || '';
                         const uTier = (row && row.tier)      || tStar.tier      || 'basic';
-                        const uWallet = tStar.wallet_address || '';
                         let label = uTier === 'supernova' ? '⚡ Supernova Core'
                                   : uTier === 'constellation' ? '🌌 Constellation'
                                   : '⭐ Basic Star';
@@ -706,6 +705,7 @@
                             <div class="tooltip-type" style="margin-top:5px;">${label}</div>
                             <div class="tooltip-title">${uName}</div>
                             <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${uMsg}"</div>
+                            <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(tStar.x)} Y:${Math.round(tStar.y)} Z:${Math.round(tStar.z)}</div>
                         `;
                         tooltip.className = uTier;
                     } else {
@@ -713,6 +713,7 @@
                             <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${targetId}</div>
                             <div class="tooltip-type" style="margin-top:5px;">⭐ Available</div>
                             <div class="tooltip-title" style="color:#aaa;">Free — click to purchase</div>
+                            <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(tStar.x)} Y:${Math.round(tStar.y)} Z:${Math.round(tStar.z)}</div>
                         `;
                         tooltip.className = '';
                     }
@@ -878,12 +879,16 @@
         let hoveredStar = null;
         let globalZOffset = 5000; const targetZOffset = 0; const flyInSpeed = 0.02;
 
+        const msgLimits = { basic: 80, supernova: 110, constellation: 200 };
+
         tierBoxes.forEach(box => {
             box.addEventListener('click', () => {
                 tierBoxes.forEach(b => b.classList.remove('selected'));
                 box.classList.add('selected');
                 selectedTier = box.getAttribute('data-tier');
                 selectedPriceDoge = parseFloat(box.getAttribute('data-price'));
+                msgInput.maxLength = msgLimits[selectedTier] || 80;
+                msgInput.placeholder = `To the moon! 🚀 (max ${msgInput.maxLength} chars)`;
             });
         });
 
