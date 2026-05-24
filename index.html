@@ -961,6 +961,20 @@
             // Start rendering only after purchased stars are loaded
             startTime = Date.now();
             animate();
+
+            // Auto-open star from shared link: ?star=N
+            const urlParams = new URLSearchParams(window.location.search);
+            const starParam = urlParams.get('star');
+            if (starParam !== null) {
+                const idVal = parseInt(starParam);
+                if (!isNaN(idVal) && idVal >= 0 && idVal < numStars) {
+                    // Small delay so the canvas has rendered at least one frame
+                    setTimeout(() => {
+                        searchInput.value = idVal;
+                        searchBtn.click();
+                    }, 300);
+                }
+            }
         }
         initSupabaseAndStart();
 
@@ -1256,8 +1270,8 @@
             // Show congratulations overlay
             const starNum  = activeClickedStarNumber;
             const starObj  = stars[starNum];
-            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}&x=${Math.round(starObj.x)}&y=${Math.round(starObj.y)}&z=${Math.round(starObj.z)}`;
-            const shareMsg = encodeURIComponent(`I bought a real star in the digital galaxy! Look at it: ${starLink}`);
+            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
+            const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
 
             document.getElementById('congrats-title').textContent =
                 `Congratulations on purchasing star #${starNum} in this digital galaxy.`;
@@ -1276,7 +1290,7 @@
             document.getElementById('share-facebook').href =
                 `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(starLink)}`;
             document.getElementById('share-instagram').onclick = () => {
-                navigator.clipboard.writeText(`I bought a real star in the digital galaxy! Look at it: ${starLink}`);
+                navigator.clipboard.writeText(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
                 const btn = document.getElementById('share-instagram');
                 btn.textContent = 'Copied! Paste in Instagram';
                 setTimeout(() => btn.textContent = 'Instagram', 3000);
@@ -1284,7 +1298,7 @@
             document.getElementById('share-whatsapp').href =
                 `https://wa.me/?text=${shareMsg}`;
             document.getElementById('share-telegram').href =
-                `https://t.me/share/url?url=${encodeURIComponent(starLink)}&text=${encodeURIComponent('I bought a real star in the digital galaxy!')}`;
+                `https://t.me/share/url?url=${encodeURIComponent(starLink)}&text=${encodeURIComponent('I bought my own star in the digital galaxy!')}`;
             document.getElementById('share-viber').href =
                 `viber://forward?text=${shareMsg}`;
 
