@@ -424,6 +424,122 @@
             text-align: center;
             letter-spacing: 1px;
         }
+        /* Congratulations Overlay */
+        #congrats-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(1, 1, 8, 0.93);
+            backdrop-filter: blur(20px);
+            align-items: center;
+            justify-content: center;
+        }
+        #congrats-overlay.visible { display: flex; }
+        .congrats-box {
+            max-width: 520px;
+            width: 90%;
+            background: rgba(5, 5, 20, 0.75);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 24px;
+            padding: 44px 48px 36px;
+            box-shadow: 0 0 80px rgba(255, 215, 0, 0.1);
+            text-align: center;
+        }
+        .congrats-star-icon { font-size: 52px; margin-bottom: 16px; }
+        .congrats-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd700;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .congrats-message {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.7;
+            margin-bottom: 28px;
+        }
+        .congrats-link-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,215,0,0.06);
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 28px;
+        }
+        .congrats-link-text {
+            flex: 1;
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            word-break: break-all;
+            text-align: left;
+        }
+        .congrats-copy-btn {
+            flex-shrink: 0;
+            padding: 5px 12px;
+            background: rgba(255,215,0,0.1);
+            border: 1px solid rgba(255,215,0,0.35);
+            border-radius: 8px;
+            color: #ffd700;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .congrats-copy-btn:hover { background: rgba(255,215,0,0.25); }
+        .congrats-share-label {
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(255,215,0,0.45);
+            margin-bottom: 14px;
+        }
+        .congrats-share-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 28px;
+        }
+        .share-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: opacity 0.2s, transform 0.15s;
+            color: #fff;
+        }
+        .share-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .share-btn.twitter    { background: #1da1f2; }
+        .share-btn.facebook   { background: #1877f2; }
+        .share-btn.instagram  { background: linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); }
+        .share-btn.whatsapp   { background: #25d366; }
+        .share-btn.telegram   { background: #0088cc; }
+        .share-btn.viber      { background: #7360f2; }
+        .congrats-close-btn {
+            padding: 10px 36px;
+            background: rgba(255,215,0,0.08);
+            border: 1px solid rgba(255,215,0,0.35);
+            border-radius: 20px;
+            color: #ffd700;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.25s, box-shadow 0.25s;
+        }
+        .congrats-close-btn:hover {
+            background: rgba(255,215,0,0.22);
+            box-shadow: 0 0 18px rgba(255,215,0,0.3);
+        }
     </style>
 </head>
 <body>
@@ -454,6 +570,29 @@
     </div>
 
     <div id="star-tooltip"></div>
+
+    <!-- Congratulations Overlay -->
+    <div id="congrats-overlay">
+        <div class="congrats-box">
+            <div class="congrats-star-icon">⭐</div>
+            <div class="congrats-title" id="congrats-title"></div>
+            <div class="congrats-message">Now we are united and will always be here for support.</div>
+            <div class="congrats-link-row">
+                <span class="congrats-link-text" id="congrats-link"></span>
+                <button class="congrats-copy-btn" id="congrats-copy-btn">COPY</button>
+            </div>
+            <div class="congrats-share-label">✦ Share your star</div>
+            <div class="congrats-share-row">
+                <a id="share-twitter"   class="share-btn twitter"   target="_blank" rel="noopener">𝕏 Twitter</a>
+                <a id="share-facebook"  class="share-btn facebook"  target="_blank" rel="noopener">Facebook</a>
+                <button id="share-instagram" class="share-btn instagram">Instagram</button>
+                <a id="share-whatsapp"  class="share-btn whatsapp"  target="_blank" rel="noopener">WhatsApp</a>
+                <a id="share-telegram"  class="share-btn telegram"  target="_blank" rel="noopener">Telegram</a>
+                <a id="share-viber"     class="share-btn viber"     target="_blank" rel="noopener">Viber</a>
+            </div>
+            <button class="congrats-close-btn" id="congrats-close-btn">Continue exploring the galaxy</button>
+        </div>
+    </div>
 
     <!-- Info Overlay (About / How to use / ToS / For You) -->
     <div id="info-overlay">
@@ -1107,12 +1246,53 @@
             stars[activeClickedStarNumber].tier = selectedTier;
             stars[activeClickedStarNumber].message = msgVal;
 
-            alert(`Success! Star #${activeClickedStarNumber} is registered.`);
+            // Close purchase modal
             ownerInput.value = ""; msgInput.value = "";
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
             payBtn.disabled = false;
             payBtn.innerText = "Proceed to Web3 Payment";
+
+            // Show congratulations overlay
+            const starNum  = activeClickedStarNumber;
+            const starObj  = stars[starNum];
+            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}&x=${Math.round(starObj.x)}&y=${Math.round(starObj.y)}&z=${Math.round(starObj.z)}`;
+            const shareMsg = encodeURIComponent(`I bought a real star in the digital galaxy! Look at it: ${starLink}`);
+
+            document.getElementById('congrats-title').textContent =
+                `Congratulations on purchasing star #${starNum} in this digital galaxy.`;
+            document.getElementById('congrats-link').textContent = starLink;
+
+            document.getElementById('congrats-copy-btn').onclick = () => {
+                navigator.clipboard.writeText(starLink).then(() => {
+                    const btn = document.getElementById('congrats-copy-btn');
+                    btn.textContent = 'COPIED!';
+                    setTimeout(() => btn.textContent = 'COPY', 2000);
+                });
+            };
+
+            document.getElementById('share-twitter').href =
+                `https://twitter.com/intent/tweet?text=${shareMsg}`;
+            document.getElementById('share-facebook').href =
+                `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(starLink)}`;
+            document.getElementById('share-instagram').onclick = () => {
+                navigator.clipboard.writeText(`I bought a real star in the digital galaxy! Look at it: ${starLink}`);
+                const btn = document.getElementById('share-instagram');
+                btn.textContent = 'Copied! Paste in Instagram';
+                setTimeout(() => btn.textContent = 'Instagram', 3000);
+            };
+            document.getElementById('share-whatsapp').href =
+                `https://wa.me/?text=${shareMsg}`;
+            document.getElementById('share-telegram').href =
+                `https://t.me/share/url?url=${encodeURIComponent(starLink)}&text=${encodeURIComponent('I bought a real star in the digital galaxy!')}`;
+            document.getElementById('share-viber').href =
+                `viber://forward?text=${shareMsg}`;
+
+            const congratsOverlay = document.getElementById('congrats-overlay');
+            congratsOverlay.classList.add('visible');
+            document.getElementById('congrats-close-btn').onclick = () => {
+                congratsOverlay.classList.remove('visible');
+            };
         });
 
         function animate() {
