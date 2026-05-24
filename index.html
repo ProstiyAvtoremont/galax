@@ -148,10 +148,16 @@
             font-size: 13px;
             pointer-events: none;
             display: none;
-            z-index: 100;
+            z-index: 50;
             backdrop-filter: blur(10px);
             box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
             min-width: 220px;
+            max-width: 300px;
+            max-height: 260px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-wrap: break-word;
+            word-break: break-word;
         }
         #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3); }
         #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3); }
@@ -628,8 +634,8 @@
         </div>
 
         <div class="input-group">
-            <label for="star-owner">X (Twitter) Handle / Name</label>
-            <input type="text" id="star-owner" class="input-field" placeholder="@elonmusk" maxlength="30">
+            <label for="star-owner">Name / Nickname</label>
+            <input type="text" id="star-owner" class="input-field" placeholder="Name" maxlength="30">
         </div>
         <div class="input-group">
             <label for="star-msg">Your Message</label>
