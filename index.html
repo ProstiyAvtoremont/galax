@@ -1012,6 +1012,7 @@
                         tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
                         document.getElementById('modal-title').innerText = `Claim Star #${i} (${Math.round(tStar.x)}, ${Math.round(tStar.y)})`;
                         modal.style.display = 'block';
+                        refreshPayBtnState();
                         setTimeout(() => modal.classList.add('active'), 10);
                     });
                 }
@@ -1219,6 +1220,7 @@
                     activeClickedStarNumber = idVal;
                     document.getElementById('modal-title').innerText = `Claim Star #${idVal} (${Math.round(targetStar.x)}, ${Math.round(targetStar.y)})`;
                     modal.style.display = 'block';
+                    refreshPayBtnState();
                     setTimeout(() => modal.classList.add('active'), 10);
                 }
             }
@@ -1341,13 +1343,51 @@
             activeClickedStarNumber = nextFreeIdx;
             document.getElementById('modal-title').innerText = `Claim Star #${nextFreeIdx} (${Math.round(nStar.x)}, ${Math.round(nStar.y)})`;
             modal.style.display = 'block';
+            refreshPayBtnState();
             setTimeout(() => modal.classList.add('active'), 10);
         });
 
         modalClose.addEventListener('click', () => {
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
+            payBtn.disabled = false;
+            payBtn.innerText = 'Proceed to Web3 Payment';
+            payBtn.style.background = '';
+            payBtn.style.color = '';
         });
+
+        // Check live in DB whether a star is still free before allowing purchase
+        async function checkStarAvailability(starNumber) {
+            if (!db) return true; // can't check, allow optimistically
+            try {
+                const { data, error } = await db
+                    .from('purchased_stars')
+                    .select('star_number')
+                    .eq('star_number', starNumber)
+                    .maybeSingle();
+                if (error) return true; // on DB error, allow and let insert handle it
+                return data === null; // null means no row found = still free
+            } catch (e) {
+                return true;
+            }
+        }
+
+        // Disable/enable pay button based on whether the star is still available
+        async function refreshPayBtnState() {
+            if (activeClickedStarNumber === null) return;
+            const isFree = await checkStarAvailability(activeClickedStarNumber);
+            if (!isFree) {
+                payBtn.disabled = true;
+                payBtn.innerText = '⛔ Star Already Purchased';
+                payBtn.style.background = '#555';
+                payBtn.style.color = '#aaa';
+            } else {
+                payBtn.disabled = false;
+                payBtn.innerText = 'Proceed to Web3 Payment';
+                payBtn.style.background = '';
+                payBtn.style.color = '';
+            }
+        }
 
         payBtn.addEventListener('click', async () => {
             const userNameVal = ownerInput.value.trim() || "Anonymous";
@@ -1355,6 +1395,20 @@
             let userWalletAddress = "0xManualDogeTransferPayment";
 
             payBtn.disabled = true;
+            payBtn.innerText = "Checking availability...";
+
+            // Live availability check right before payment
+            const stillFree = await checkStarAvailability(activeClickedStarNumber);
+            if (!stillFree) {
+                payBtn.innerText = '⛔ Star Already Purchased';
+                payBtn.style.background = '#555';
+                payBtn.style.color = '#aaa';
+                // Mark locally so UI updates
+                stars[activeClickedStarNumber].isBought = true;
+                alert(`⚠️ Star #${activeClickedStarNumber} was just purchased by someone else. Please reload the page and choose a different star.`);
+                return;
+            }
+
             payBtn.innerText = "Connecting Wallet...";
 
             if (typeof window.ethereum !== 'undefined') {
@@ -1375,8 +1429,22 @@
                         { star_number: activeClickedStarNumber, user_name: userNameVal, wallet_address: userWalletAddress, tier: selectedTier, message: msgVal }
                     ]);
                     if (error) {
+                        // Duplicate key = someone else got it first during payment flow
+                        if (error.message && error.message.includes('duplicate key')) {
+                            stars[activeClickedStarNumber].isBought = true;
+                            payBtn.innerText = '⛔ Star Already Purchased';
+                            payBtn.style.background = '#555';
+                            payBtn.style.color = '#aaa';
+                            alert(`⚠️ Star #${activeClickedStarNumber} was purchased by someone else while you were completing payment. Please reload and choose a different star.`);
+                            return;
+                        }
                         console.error("Supabase insert error:", error.message);
                         alert(`⚠️ Database save failed: ${error.message}`);
+                        payBtn.disabled = false;
+                        payBtn.innerText = 'Proceed to Web3 Payment';
+                        payBtn.style.background = '';
+                        payBtn.style.color = '';
+                        return;
                     }
                 }
             } catch (err) { console.error("Database sync issue:", err.message); }
