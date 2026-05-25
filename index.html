@@ -1,1 +1,1666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>DOGE Starfield Space — Buy Your Own Star</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #010105;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #fff;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+        
+        .controls-container {
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 10;
+        }
 
+        .ui-btn {
+            padding: 12px 24px;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            border-radius: 30px;
+            color: #ffd700;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(8px);
+        }
+        .ui-btn:hover {
+            background: rgba(255, 215, 0, 0.25);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        /* NEW: Search Bar Panel Styling */
+        .search-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 15;
+            display: flex;
+            gap: 10px;
+            background: rgba(5, 5, 15, 0.6);
+            padding: 8px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        .search-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            padding: 5px 15px;
+            font-size: 13px;
+            width: 140px;
+        }
+        .search-btn {
+            background: #ffd700;
+            border: none;
+            color: #000;
+            padding: 6px 15px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-btn:hover {
+            background: #fff;
+        }
+
+        /* Promo / Info Box */
+        .promo-box {
+            position: absolute;
+            top: 72px;
+            left: 20px;
+            z-index: 15;
+            width: 230px;
+            background: rgba(5, 5, 15, 0.6);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            padding: 12px 14px 10px;
+        }
+        .promo-label {
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(255, 215, 0, 0.5);
+            margin-bottom: 7px;
+        }
+        .promo-text {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.82);
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+        .promo-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .promo-btn {
+            flex: 1;
+            padding: 6px 0;
+            background: rgba(255, 215, 0, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.35);
+            border-radius: 20px;
+            color: #ffd700;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            transition: background 0.25s, box-shadow 0.25s;
+            backdrop-filter: blur(8px);
+        }
+        .promo-btn:hover {
+            background: rgba(255, 215, 0, 0.22);
+            box-shadow: 0 0 14px rgba(255, 215, 0, 0.35);
+        }
+
+        /* Hover Tooltip Card */
+        #star-tooltip {
+            position: absolute;
+            padding: 15px;
+            background: rgba(5, 5, 15, 0.9);
+            border: 1px solid #ffd700;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 13px;
+            pointer-events: auto;
+            cursor: text;
+            user-select: text;
+            -webkit-user-select: text;
+            display: none;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+            min-width: 220px;
+            max-width: 300px;
+            max-height: 260px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+        #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3); }
+        #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3); }
+        
+        .tooltip-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; color: #ffd700; }
+        #star-tooltip.supernova .tooltip-title { color: #ff3366; }
+        #star-tooltip.constellation .tooltip-title { color: #00ffff; }
+        .tooltip-type { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; opacity: 0.7; }
+        .tooltip-meta { color: #888; font-size: 10px; margin-top: 8px; word-break: break-all; }
+
+        /* Neon Payment Modal */
+        #payment-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: rgba(7, 7, 20, 0.95);
+            border: 1px solid #ffd700;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.25);
+            border-radius: 20px;
+            padding: 25px;
+            width: 360px;
+            text-align: center;
+            backdrop-filter: blur(15px);
+            z-index: 200;
+            display: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #payment-modal.active {
+            display: block;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 20px;
+        }
+
+        .tier-box {
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.02);
+            text-align: left;
+        }
+        .tier-box.selected {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.08);
+        }
+
+        .input-group {
+            text-align: left;
+            margin-top: 12px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 11px;
+            color: #ffd700;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .input-field {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 11px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+        }
+        .input-field:focus {
+            border-color: #ffd700;
+        }
+
+        .pay-btn {
+            width: 100%;
+            padding: 12px;
+            background: #ffd700;
+            border: none;
+            border-radius: 25px;
+            color: #000;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 18px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+        }
+        .pay-btn:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Neighbors Panel */
+        #neighbors-panel {
+            position: absolute;
+            top: 240px;
+            left: 20px;
+            z-index: 15;
+            width: 230px;
+            background: rgba(5, 5, 15, 0.85);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.1);
+            display: none;
+            overflow: hidden;
+        }
+        #neighbors-panel.visible {
+            display: block;
+        }
+        .neighbors-header {
+            padding: 12px 16px 8px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .neighbors-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #ffd700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .neighbors-loading {
+            font-size: 10px;
+            color: #888;
+        }
+        #neighbors-list {
+            max-height: calc(100vh - 340px);
+            overflow-y: auto;
+            padding: 6px 0;
+        }
+        #neighbors-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        #neighbors-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #neighbors-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 215, 0, 0.3);
+            border-radius: 2px;
+        }
+        .neighbor-item {
+            padding: 7px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background 0.15s;
+            border-left: 3px solid transparent;
+        }
+        .neighbor-item:hover {
+            background: rgba(255, 215, 0, 0.07);
+        }
+        .neighbor-item.is-selected {
+            border-left-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+        .neighbor-item.is-purchased {
+            border-left-color: #ffd700;
+        }
+        .neighbor-item.is-purchased.tier-supernova {
+            border-left-color: #ff3366;
+        }
+        .neighbor-item.is-purchased.tier-constellation {
+            border-left-color: #00ffff;
+        }
+        .neighbor-num {
+            font-size: 10px;
+            color: #666;
+            min-width: 44px;
+            font-variant-numeric: tabular-nums;
+        }
+        .neighbor-num.is-selected-num {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        .neighbor-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #333;
+            flex-shrink: 0;
+        }
+        .neighbor-dot.bought { background: #ffd700; }
+        .neighbor-dot.supernova { background: #ff3366; box-shadow: 0 0 5px #ff3366; }
+        .neighbor-dot.constellation { background: #00ffff; box-shadow: 0 0 5px #00ffff; }
+        .neighbor-info {
+            flex: 1;
+            overflow: hidden;
+        }
+        .neighbor-name {
+            font-size: 11px;
+            color: #ddd;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .neighbor-name.free {
+            color: #444;
+            font-style: italic;
+        }
+        .neighbor-msg {
+            font-size: 9px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 1px;
+        }
+        /* Info Overlay */
+        #info-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(1, 1, 8, 0.92);
+            backdrop-filter: blur(18px);
+            cursor: pointer;
+            overflow-y: auto;
+        }
+        #info-overlay.visible {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .info-overlay-inner {
+            max-width: 680px;
+            width: 90%;
+            margin: 60px auto;
+            padding: 48px 52px;
+            background: rgba(5, 5, 20, 0.7);
+            border: 1px solid rgba(255, 215, 0, 0.25);
+            border-radius: 24px;
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.08);
+            pointer-events: none;
+        }
+        .info-overlay-label {
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: rgba(255, 215, 0, 0.55);
+            margin-bottom: 20px;
+        }
+        .info-overlay-text {
+            font-size: 15px;
+            line-height: 1.85;
+            color: rgba(255, 255, 255, 0.88);
+            white-space: pre-wrap;
+        }
+        .info-overlay-hint {
+            margin-top: 36px;
+            font-size: 11px;
+            color: rgba(255, 215, 0, 0.35);
+            text-align: center;
+            letter-spacing: 1px;
+        }
+        /* Congratulations Overlay */
+        #congrats-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(1, 1, 8, 0.93);
+            backdrop-filter: blur(20px);
+            align-items: center;
+            justify-content: center;
+        }
+        #congrats-overlay.visible { display: flex; }
+        .congrats-box {
+            max-width: 520px;
+            width: 90%;
+            background: rgba(5, 5, 20, 0.75);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 24px;
+            padding: 44px 48px 36px;
+            box-shadow: 0 0 80px rgba(255, 215, 0, 0.1);
+            text-align: center;
+        }
+        .congrats-star-icon { font-size: 52px; margin-bottom: 16px; }
+        .congrats-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd700;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .congrats-message {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.7;
+            margin-bottom: 28px;
+        }
+        .congrats-link-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,215,0,0.06);
+            border: 1px solid rgba(255,215,0,0.2);
+            border-radius: 12px;
+            padding: 10px 14px;
+            margin-bottom: 28px;
+        }
+        .congrats-link-text {
+            flex: 1;
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            word-break: break-all;
+            text-align: left;
+        }
+        .congrats-copy-btn {
+            flex-shrink: 0;
+            padding: 5px 12px;
+            background: rgba(255,215,0,0.1);
+            border: 1px solid rgba(255,215,0,0.35);
+            border-radius: 8px;
+            color: #ffd700;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .congrats-copy-btn:hover { background: rgba(255,215,0,0.25); }
+        .congrats-share-label {
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(255,215,0,0.45);
+            margin-bottom: 14px;
+        }
+        .congrats-share-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 28px;
+        }
+        .share-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            transition: opacity 0.2s, transform 0.15s;
+            color: #fff;
+        }
+        .share-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+        .share-btn.twitter    { background: #1da1f2; }
+        .share-btn.facebook   { background: #1877f2; }
+        .share-btn.instagram  { background: linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888); }
+        .share-btn.whatsapp   { background: #25d366; }
+        .share-btn.telegram   { background: #0088cc; }
+        .share-btn.viber      { background: #7360f2; }
+        .congrats-close-btn {
+            padding: 10px 36px;
+            background: rgba(255,215,0,0.08);
+            border: 1px solid rgba(255,215,0,0.35);
+            border-radius: 20px;
+            color: #ffd700;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.25s, box-shadow 0.25s;
+        }
+        .congrats-close-btn:hover {
+            background: rgba(255,215,0,0.22);
+            box-shadow: 0 0 18px rgba(255,215,0,0.3);
+        }
+        /* ===================== RESPONSIVE ===================== */
+
+        /* Mobile portrait ≤ 480px */
+        @media (max-width: 480px) {
+            .search-container {
+                top: 10px; left: 10px; right: 10px;
+                width: auto; gap: 6px;
+            }
+            .search-input { width: 100%; font-size: 12px; padding: 5px 8px; }
+            .search-btn   { font-size: 10px; padding: 6px 10px; white-space: nowrap; }
+
+            .promo-box {
+                top: 62px; left: 10px; right: 10px;
+                width: auto;
+            }
+            .promo-text { font-size: 11px; }
+            .promo-btn  { font-size: 10px; padding: 5px 0; }
+
+            #neighbors-panel {
+                position: fixed;
+                top: auto !important;
+                bottom: 80px;
+                left: 10px; right: 10px;
+                width: auto !important;
+                max-height: 36vh;
+            }
+            #neighbors-list { max-height: 28vh; }
+
+            .controls-container {
+                bottom: 8px; gap: 5px;
+                flex-wrap: wrap;
+                justify-content: center;
+                padding: 0 6px;
+                width: calc(100% - 12px);
+            }
+            .ui-btn { font-size: 10px; padding: 7px 10px; letter-spacing: 0.5px; }
+
+            #payment-modal {
+                width: 94vw !important;
+                max-height: 88vh;
+                overflow-y: auto;
+                padding: 18px 14px !important;
+                top: 50% !important; left: 50% !important;
+            }
+
+            .congrats-box  { padding: 24px 16px 20px; }
+            .congrats-title { font-size: 15px; }
+            .congrats-share-row { gap: 6px; }
+            .share-btn { font-size: 10px; padding: 6px 8px; }
+            .congrats-close-btn { padding: 9px 20px; font-size: 12px; }
+
+            .info-overlay-inner { padding: 24px 16px; margin: 20px auto; }
+            .info-overlay-text  { font-size: 13px; }
+
+            #star-tooltip {
+                max-width: calc(100vw - 24px);
+                font-size: 12px;
+                left: 12px !important;
+            }
+        }
+
+        /* Mobile landscape / small tablet 481–768px */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .search-container { top: 12px; left: 12px; }
+            .search-input { width: 120px; }
+
+            .promo-box { top: 66px; left: 12px; width: 210px; }
+            .promo-text { font-size: 11px; }
+
+            #neighbors-panel {
+                top: auto !important;
+                bottom: 80px;
+                left: 12px;
+                width: 210px !important;
+                max-height: 34vh;
+            }
+            #neighbors-list { max-height: 26vh; }
+
+            .controls-container { bottom: 12px; gap: 8px; }
+            .ui-btn { font-size: 11px; padding: 9px 14px; }
+
+            #payment-modal {
+                width: 82vw !important;
+                max-height: 88vh;
+                overflow-y: auto;
+            }
+
+            .congrats-box { padding: 30px 24px; }
+            .share-btn { font-size: 11px; padding: 6px 10px; }
+        }
+
+        /* Tablet 769–1024px */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .promo-box      { width: 218px; }
+            #neighbors-panel { width: 218px !important; }
+            .search-input   { width: 128px; }
+            .controls-container { gap: 10px; }
+            .ui-btn { font-size: 12px; padding: 10px 18px; }
+            #payment-modal  { width: 360px !important; }
+        }
+
+        /* Touch devices — remove hover-only effects */
+        @media (hover: none) and (pointer: coarse) {
+            .ui-btn:hover, .promo-btn:hover,
+            .search-btn:hover, .neighbor-item:hover,
+            .congrats-copy-btn:hover, .congrats-close-btn:hover { all: unset; }
+            .ui-btn, .promo-btn, .search-btn,
+            .congrats-copy-btn, .congrats-close-btn {
+                cursor: pointer;
+            }
+            /* Tap active state instead */
+            .ui-btn:active      { background: rgba(255,215,0,0.25); }
+            .promo-btn:active   { background: rgba(255,215,0,0.22); }
+            .neighbor-item:active { background: rgba(255,215,0,0.07); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="search-container">
+        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
+        <button id="search-btn" class="search-btn">SEARCH</button>
+    </div>
+
+    <!-- Promo / Info Box -->
+    <div class="promo-box">
+        <div class="promo-label">✦ Your Star Awaits</div>
+        <div class="promo-text">Cheaper than coffee. Longer lasting than anything else. Your personal digital star for just $1.</div>
+        <div class="promo-actions">
+            <button class="promo-btn" id="promo-about-btn">ABOUT</button>
+            <button class="promo-btn" id="promo-tutorial-btn">HOW TO USE</button>
+        </div>
+        <div class="promo-actions" style="margin-top: 8px;">
+            <button class="promo-btn" id="promo-tos-btn">ToS</button>
+            <button class="promo-btn" id="promo-faq-btn">FOR YOU</button>
+        </div>
+    </div>
+
+    <canvas id="starfield"></canvas>
+    
+    <div class="controls-container">
+        <button class="ui-btn" id="audio-btn">ENABLE AMBIENT</button>
+    </div>
+
+    <div id="star-tooltip"></div>
+
+    <!-- Congratulations Overlay -->
+    <div id="congrats-overlay">
+        <div class="congrats-box">
+            <div class="congrats-star-icon">⭐</div>
+            <div class="congrats-title" id="congrats-title"></div>
+            <div class="congrats-message">Important: Be sure to save the link to your star. This way, you can view it at any time without wasting time searching. Or, remember the number and find your star in the search window.</div>
+            <div class="congrats-link-row">
+                <span class="congrats-link-text" id="congrats-link"></span>
+                <button class="congrats-copy-btn" id="congrats-copy-btn">COPY</button>
+            </div>
+            <div class="congrats-share-label">✦ Share your star</div>
+            <div class="congrats-share-row">
+                <a id="share-twitter"   class="share-btn twitter"   target="_blank" rel="noopener">𝕏 Twitter</a>
+                <a id="share-facebook"  class="share-btn facebook"  target="_blank" rel="noopener">Facebook</a>
+                <button id="share-instagram" class="share-btn instagram">Instagram</button>
+                <a id="share-whatsapp"  class="share-btn whatsapp"  target="_blank" rel="noopener">WhatsApp</a>
+                <a id="share-telegram"  class="share-btn telegram"  target="_blank" rel="noopener">Telegram</a>
+                <a id="share-viber"     class="share-btn viber"     target="_blank" rel="noopener">Viber</a>
+            </div>
+            <button class="congrats-close-btn" id="congrats-close-btn">Continue exploring the galaxy</button>
+        </div>
+    </div>
+
+    <!-- Info Overlay (About / How to use / ToS / For You) -->
+    <div id="info-overlay">
+        <div class="info-overlay-inner">
+            <div class="info-overlay-label" id="info-overlay-label"></div>
+            <div class="info-overlay-text" id="info-overlay-text"></div>
+            <div class="info-overlay-hint">✦ click anywhere to close</div>
+        </div>
+    </div>
+
+    <!-- Neighbors Panel -->
+    <div id="neighbors-panel">
+        <div class="neighbors-header">
+            <span class="neighbors-title" id="neighbors-title">Adjacent Stars</span>
+            <span class="neighbors-loading" id="neighbors-loading"></span>
+        </div>
+        <div id="neighbors-list"></div>
+    </div>
+
+    <div id="payment-modal">
+        <span class="modal-close" id="modal-close">&times;</span>
+        <h3 id="modal-title" style="color: #ffd700; margin-top: 0; margin-bottom: 5px;">Claim This Star</h3>
+        <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">Immortalize your name on the galaxy map via DOGE.</p>
+        
+        <div class="tier-box selected" data-tier="basic" data-price="1">
+            <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star ($1)</div>
+        </div>
+        <div class="tier-box" data-tier="supernova" data-price="2">
+            <div style="font-weight:bold; color:#ff3366;">✨ Supernova ($2)</div>
+        </div>
+        <div class="tier-box" data-tier="constellation" data-price="4">
+            <div style="font-weight:bold; color:#00ffff;">🌌 Constellation ($4)</div>
+        </div>
+
+        <div class="input-group">
+            <label for="star-owner">Name / Nickname</label>
+            <input type="text" id="star-owner" class="input-field" placeholder="Name" maxlength="30">
+        </div>
+        <div class="input-group">
+            <label for="star-msg">Your Message</label>
+            <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="80">
+        </div>
+
+        <button class="pay-btn" id="pay-btn">Proceed to Web3 Payment</button>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://xfltnkwrkixnmgyonqrt.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbHRua3dya2l4bm1neW9ucXJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNDU3MTMsImV4cCI6MjA5NDYyMTcxM30.FwI-F6eMifEo46dCNXNKsNpPSgibdwHMulGnlqs91VM";
+
+        let db = null;
+
+        // Supabase script is in <head> so it's already loaded by the time
+        // this <body> script runs — call initSupabase directly after stars are built.
+        // loadPurchasedStars() is called from initSupabase() below the stars loop.
+
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        const audioBtn = document.getElementById('audio-btn');
+        const tooltip = document.getElementById('star-tooltip');
+        const modal = document.getElementById('payment-modal');
+        const modalClose = document.getElementById('modal-close');
+        const payBtn = document.getElementById('pay-btn');
+        const tierBoxes = document.querySelectorAll('.tier-box');
+        const ownerInput = document.getElementById('star-owner');
+        const msgInput = document.getElementById('star-msg');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
+        
+        let selectedTier = "basic";
+        let selectedPriceDoge = 1;
+        let activeClickedStarNumber = null;
+        let focusedStarIndex = null;
+        let previousFocusedIndex = null;  // tracks the last focused star so old neighbors can be hidden
+        let pinnedStarIndex = null;   // star pinned from the neighbors panel
+        let pinnedTooltipHTML = '';   // tooltip content for the pinned star
+        let targetXOffset = 0;
+        let targetYOffset = 0;
+        let currentXOffset = 0;
+        let currentYOffset = 0;
+        let focusedStarHovered = false;
+        let startTime = 0;
+
+        // --- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ СОСЕДЕЙ ---
+        function isNeighborStar(i) {
+            return focusedStarIndex !== null && i >= focusedStarIndex - 5 && i <= focusedStarIndex + 5;
+        }
+
+        // Reset positions of stars that were neighbors of the old focus so they move off-screen
+        function clearPreviousNeighbors(oldCenter) {
+            if (oldCenter === null) return;
+            const rangeMin = Math.max(0, oldCenter - 5);
+            const rangeMax = Math.min(numStars - 1, oldCenter + 5);
+            for (let i = rangeMin; i <= rangeMax; i++) {
+                if (stars[i].isBought) continue; // keep purchased stars in place
+                // Scatter them far outside the viewport so they're invisible
+                stars[i].x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+                stars[i].y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+            }
+        }
+
+        // --- NEIGHBORS PANEL ---
+        const neighborsPanel = document.getElementById('neighbors-panel');
+        const neighborsList = document.getElementById('neighbors-list');
+        const neighborsTitle = document.getElementById('neighbors-title');
+        const neighborsLoading = document.getElementById('neighbors-loading');
+        let lastNeighborsFocus = null;
+
+        async function updateNeighborsPanel(centerIndex) {
+            if (centerIndex === null) {
+                neighborsPanel.classList.remove('visible');
+                clearPreviousNeighbors(previousFocusedIndex);
+                previousFocusedIndex = null;
+                lastNeighborsFocus = null;
+                return;
+            }
+            if (centerIndex === lastNeighborsFocus) return;
+
+            // Clear old neighbors before showing new ones
+            clearPreviousNeighbors(previousFocusedIndex);
+            previousFocusedIndex = centerIndex;
+            lastNeighborsFocus = centerIndex;
+
+            const rangeMin = Math.max(0, centerIndex - 5);
+            const rangeMax = Math.min(numStars - 1, centerIndex + 5);
+
+            neighborsTitle.textContent = `Stars #${rangeMin} – #${rangeMax}`;
+            neighborsLoading.textContent = 'Loading…';
+            neighborsPanel.classList.add('visible');
+
+            // Fetch from Supabase for this range
+            let dbMap = {};
+            if (db) {
+                try {
+                    const { data, error } = await db
+                        .from('purchased_stars')
+                        .select('star_number, user_name, tier, message')
+                        .gte('star_number', rangeMin)
+                        .lte('star_number', rangeMax);
+                    if (!error && data) {
+                        data.forEach(function(row) { dbMap[row.star_number] = row; });
+                    }
+                } catch (err) {
+                    console.warn('Neighbors fetch error:', String(err));
+                }
+            }
+
+            neighborsLoading.textContent = '';
+            // Only clear and rebuild once fetch is done — prevents flicker
+            neighborsList.innerHTML = '';
+
+            // Spread the new neighbor stars across the free sky zone
+            const slots = rangeMax - rangeMin + 1;
+            const freeMargin = 40;
+            const freeLeft = 270 + freeMargin;
+            const freeRight = canvas.width - freeMargin;
+            const freeTop = freeMargin;
+            const freeBottom = canvas.height - 90 - freeMargin;
+            const cols = 4, rows = Math.ceil(slots / 4);
+            const cellW = (freeRight - freeLeft) / cols;
+            const cellH = (freeBottom - freeTop) / Math.max(rows, 1);
+            let slot = 0;
+            for (let i = rangeMin; i <= rangeMax; i++) {
+                if (i === centerIndex) { slot++; continue; }
+                if (stars[i].isBought) { slot++; continue; }
+                const col = slot % cols;
+                const row = Math.floor(slot / cols);
+                const sx = freeLeft + cellW * col + cellW * (0.2 + Math.random() * 0.6);
+                const sy = freeTop  + cellH * row + cellH * (0.2 + Math.random() * 0.6);
+                stars[i].x = (sx - cx) * (stars[i].z + 1) / 800;
+                stars[i].y = (sy - cy) * (stars[i].z + 1) / 800;
+                slot++;
+            }
+
+            for (let i = rangeMin; i <= rangeMax; i++) {
+                const inMemory = stars[i] && stars[i].isBought;
+                const dbRow = dbMap[i];
+                const isPurchased = inMemory || !!dbRow;
+                const tier = (dbRow && dbRow.tier) || (inMemory && stars[i].tier) || 'basic';
+                const userName = (dbRow && dbRow.user_name) || (inMemory && stars[i].user_name) || '';
+                const msg = (dbRow && dbRow.message) || (inMemory && stars[i].message) || '';
+                const isCenter = (i === centerIndex);
+
+                const item = document.createElement('div');
+                item.className = 'neighbor-item' +
+                    (isPurchased ? ' is-purchased tier-' + tier : '') +
+                    (isCenter ? ' is-selected' : '');
+
+                const dotClass = isPurchased
+                    ? (tier === 'supernova' ? 'supernova' : tier === 'constellation' ? 'constellation' : 'bought')
+                    : '';
+
+                item.innerHTML = `
+                    <span class="neighbor-num${isCenter ? ' is-selected-num' : ''}">#${i}${isCenter ? ' ◀' : ''}</span>
+                    <span class="neighbor-dot ${dotClass}"></span>
+                    <span class="neighbor-info">
+                        <div class="neighbor-name${!isPurchased ? ' free' : ''}">${isPurchased ? (userName || 'Anonymous') : 'Available'}</div>
+                        ${isPurchased && msg ? `<div class="neighbor-msg">"${msg}"</div>` : ''}
+                    </span>
+                `;
+
+                // Clicking a neighbor row pins that star on screen with its tooltip
+                item.addEventListener('click', () => {
+                    const targetId = i;
+                    const tStar = stars[targetId];
+
+                    // Clear previous pin
+                    pinnedStarIndex = null;
+                    tooltip.style.display = 'none';
+
+                    // Update selected highlight in the panel without rebuilding it
+                    neighborsList.querySelectorAll('.neighbor-item').forEach(el => el.classList.remove('is-selected'));
+                    item.classList.add('is-selected');
+                    neighborsList.querySelectorAll('.neighbor-num').forEach(el => {
+                        el.classList.remove('is-selected-num');
+                        el.textContent = el.textContent.replace(' ◀', '');
+                    });
+                    const thisNum = item.querySelector('.neighbor-num');
+                    if (thisNum) { thisNum.classList.add('is-selected-num'); thisNum.textContent += ' ◀'; }
+
+                    // Position the star in free sky area (away from panels)
+                    const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
+                    tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
+                    tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
+                    focusedStarIndex = targetId;
+                    targetXOffset = 0;
+                    targetYOffset = 0;
+                    // Do NOT call updateNeighborsPanel here — avoids flicker and preserves dblclick
+
+                    // If clicked star is outside the current panel's center, refresh the panel
+                    if (targetId !== lastNeighborsFocus) {
+                        updateNeighborsPanel(targetId);
+                    }
+
+                    // Build tooltip content
+                    const row = dbMap[targetId];
+                    const isPurchasedNow = tStar.isBought || !!row;
+
+                    if (isPurchasedNow) {
+                        const uName = (row && row.user_name) || tStar.user_name || 'Anonymous Buyer';
+                        const uMsg  = (row && row.message)   || tStar.message   || '';
+                        const uTier = (row && row.tier)      || tStar.tier      || 'basic';
+                        let label = uTier === 'supernova' ? '⚡ Supernova Core'
+                                  : uTier === 'constellation' ? '🌌 Constellation'
+                                  : '⭐ Basic Star';
+                        pinnedTooltipHTML = `
+                            <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${targetId}</div>
+                            <div class="tooltip-type" style="margin-top:5px;">${label}</div>
+                            <div class="tooltip-title">${uName}</div>
+                            <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${uMsg}"</div>
+                            <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(tStar.x)} Y:${Math.round(tStar.y)} Z:${Math.round(tStar.z)}</div>
+                        `;
+                        tooltip.className = uTier;
+                    } else {
+                        pinnedTooltipHTML = `
+                            <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${targetId}</div>
+                            <div class="tooltip-type" style="margin-top:5px;">⭐ Available</div>
+                            <div class="tooltip-title" style="color:#aaa;">Free — click to purchase</div>
+                            <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(tStar.x)} Y:${Math.round(tStar.y)} Z:${Math.round(tStar.z)}</div>
+                        `;
+                        tooltip.className = '';
+                    }
+
+                    // Pin after a short delay so screenX/Y are updated by the renderer
+                    setTimeout(() => {
+                        pinnedStarIndex = targetId;
+                        tooltip.innerHTML = pinnedTooltipHTML;
+                        tooltip.style.display = 'block';
+                        // Initial position near the star
+                        const sx = tStar.screenX || rScreenX;
+                        const sy = tStar.screenY || rScreenY;
+                        let left = sx + 20;
+                        let top  = sy - 20;
+                        if (left + tooltip.offsetWidth  > window.innerWidth)  left = sx - tooltip.offsetWidth  - 20;
+                        if (top  + tooltip.offsetHeight > window.innerHeight) top  = sy - tooltip.offsetHeight - 20;
+                        if (left < 10) left = 10;
+                        if (top  < 10) top  = 10;
+                        tooltip.style.left = `${left}px`;
+                        tooltip.style.top  = `${top}px`;
+                    }, 200);
+                });
+
+                // Double-click on an Available row opens the purchase modal for that star
+                if (!isPurchased) {
+                    item.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        const tStar = stars[i];
+                        activeClickedStarNumber = i;
+                        focusedStarIndex = i;
+                        const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
+                        tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
+                        tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
+                        document.getElementById('modal-title').innerText = `Claim Star #${i} (${Math.round(tStar.x)}, ${Math.round(tStar.y)})`;
+                        modal.style.display = 'block';
+                        refreshPayBtnState();
+                        setTimeout(() => modal.classList.add('active'), 10);
+                    });
+                }
+
+                neighborsList.appendChild(item);
+            }
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Returns a random {sx, sy} guaranteed to fall in the open sky area —
+        // away from the left-side panels (search + promo + neighbors) and the bottom bar.
+        function getFreeZonePoint() {
+            // Left panel column: ~260px wide, full height
+            // Bottom bar: ~80px tall
+            // Small margin so the star isn't flush against a panel edge
+            const margin = 40;
+            const leftBlocked = 270;   // width of left-side UI column
+            const bottomBlocked = 90;  // height of bottom controls bar
+            const minX = leftBlocked + margin;
+            const maxX = canvas.width  - margin;
+            const minY = margin;
+            const maxY = canvas.height - bottomBlocked - margin;
+            const sx = minX + Math.random() * (maxX - minX);
+            const sy = minY + Math.random() * (maxY - minY);
+            return { sx, sy };
+        }
+
+        let cx = canvas.width / 2;
+        let cy = canvas.height / 2;
+
+        const numStars = 2000000;
+        const stars = [];
+        const rotateSpeed = 0.3;
+
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
+                x: (Math.random() - 0.5) * 3000,
+                y: (Math.random() - 0.5) * 3000,
+                z: Math.random() * 3000,
+                phase: Math.random() * Math.PI * 2,
+                flickerSpeed: 0.02 + Math.random() * 0.05,
+                isBought: false,
+                tier: 'basic',
+                user_name: '',
+                message: '',
+                wallet_address: '',
+                screenX: 0,
+                screenY: 0,
+                currentSize: 0
+            });
+        }
+
+        // Stars array is ready — init Supabase, load purchased stars, then start rendering
+        async function initSupabaseAndStart() {
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    await loadPurchasedStars(); // wait for DB before first render
+                } else {
+                    console.error("Supabase library not available.");
+                }
+            } catch(e) {
+                console.error("Supabase init error:", e.message);
+            }
+            // Start rendering only after purchased stars are loaded
+            startTime = Date.now();
+            animate();
+
+            // Auto-open star from shared link: ?star=N
+            const urlParams = new URLSearchParams(window.location.search);
+            const starParam = urlParams.get('star');
+            if (starParam !== null) {
+                const idVal = parseInt(starParam);
+                if (!isNaN(idVal) && idVal >= 0 && idVal < numStars) {
+                    // Small delay so the canvas has rendered at least one frame
+                    setTimeout(() => {
+                        searchInput.value = idVal;
+                        searchBtn.click();
+                    }, 300);
+                }
+            }
+        }
+        initSupabaseAndStart();
+
+        async function loadPurchasedStars() {
+            if (!db) { console.warn("loadPurchasedStars: db not ready"); return; }
+            try {
+                const { data, error } = await db
+                    .from('purchased_stars')
+                    .select('star_number, user_name, wallet_address, tier, message');
+                if (error) { console.warn("loadPurchasedStars DB error:", String(error.message)); return; }
+                if (!data) return;
+                console.log("loadPurchasedStars: loaded " + data.length + " stars from DB");
+                data.forEach(function(row) {
+                    const idx = row.star_number;
+                    if (idx !== null && idx >= 0 && idx < numStars) {
+                        stars[idx].isBought       = true;
+                        stars[idx].user_name      = row.user_name;
+                        stars[idx].wallet_address = row.wallet_address;
+                        stars[idx].tier           = row.tier    || 'basic';
+                        stars[idx].message        = row.message || 'To the moon! 🚀';
+                    }
+                });
+            } catch (e) {
+                console.warn("loadPurchasedStars failed:", String(e));
+            }
+        }
+        const numParticles = 100;
+        const particles = [];
+        const flySpeed = 5;
+        for (let i = 0; i < numParticles; i++) {
+            particles.push({ x: (Math.random() - 0.5) * 2000, y: (Math.random() - 0.5) * 2000, z: Math.random() * 2000 });
+        }
+
+        let audioCtx = null;
+        let isPlaying = false;
+        function playTone(freq, duration, maxVolume) {
+            if (!audioCtx || !isPlaying) return;
+            const osc = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+            osc.type = 'sine'; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            const now = audioCtx.currentTime; gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(maxVolume, now + duration * 0.4);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+            osc.connect(gainNode); gainNode.connect(audioCtx.destination);
+            osc.start(now); osc.stop(now + duration);
+        }
+        audioBtn.addEventListener('click', () => {
+            if (!isPlaying) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)(); isPlaying = true;
+                const notes = [329.63, 440.00, 493.88, 659.25];
+                setInterval(() => { if(isPlaying) playTone(notes[Math.floor(Math.random()*notes.length)], 8, 0.03) }, 6000);
+                audioBtn.innerText = "MUTE AUDIO";
+            } else { isPlaying = false; audioBtn.innerText = "ENABLE AMBIENT"; }
+        });
+
+        let hoveredStar = null;
+        let globalZOffset = 5000; const targetZOffset = 0; const flyInSpeed = 0.02;
+
+        const msgLimits = { basic: 80, supernova: 110, constellation: 200 };
+
+        tierBoxes.forEach(box => {
+            box.addEventListener('click', () => {
+                tierBoxes.forEach(b => b.classList.remove('selected'));
+                box.classList.add('selected');
+                selectedTier = box.getAttribute('data-tier');
+                selectedPriceDoge = parseFloat(box.getAttribute('data-price'));
+                msgInput.maxLength = msgLimits[selectedTier] || 80;
+                msgInput.placeholder = `To the moon! 🚀 (max ${msgInput.maxLength} chars)`;
+            });
+        });
+
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') searchBtn.click();
+        });
+
+        searchBtn.addEventListener('click', () => {
+            const idVal = parseInt(searchInput.value);
+            if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
+                alert("Please enter a valid Star ID from 0 to 1999999.");
+                return;
+            }
+
+            const targetStar = stars[idVal];
+            const { sx: randomScreenX, sy: randomScreenY } = getFreeZonePoint();
+
+            targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
+            targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
+            
+            clearPreviousNeighbors(previousFocusedIndex);
+            focusedStarIndex = idVal;
+            previousFocusedIndex = idVal;
+            targetXOffset = 0;
+            targetYOffset = 0;
+            updateNeighborsPanel(idVal);
+
+            if (targetStar.isBought) {
+                setTimeout(() => {
+                    tooltip.style.display = 'block';
+                    tooltip.className = targetStar.tier;
+                    let label = targetStar.tier === 'supernova' ? '⚡ Supernova Core' : (targetStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
+                    tooltip.innerHTML = `
+                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND STAR #${idVal}</div>
+                        <div class="tooltip-type" style="margin-top:5px;">${label}</div>
+                        <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
+                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
+                        <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
+                    `;
+                    let left = randomScreenX + 20;
+                    let top = randomScreenY - 20;
+                    if (left + tooltip.offsetWidth > window.innerWidth) left = randomScreenX - tooltip.offsetWidth - 20;
+                    if (top + tooltip.offsetHeight > window.innerHeight) top = window.innerHeight - tooltip.offsetHeight - 20;
+                    if (left < 10) left = 10;
+                    if (top < 10) top = 10;
+                    tooltip.style.left = `${left}px`;
+                    tooltip.style.top = `${top}px`;
+                }, 400);
+            } else {
+                if (confirm(`Star #${idVal} [X:${Math.round(targetStar.x)}, Y:${Math.round(targetStar.y)}, Z:${Math.round(targetStar.z)}] is FREE! Would you like to buy it right now?`)) {
+                    activeClickedStarNumber = idVal;
+                    document.getElementById('modal-title').innerText = `Claim Star #${idVal} (${Math.round(targetStar.x)}, ${Math.round(targetStar.y)})`;
+                    modal.style.display = 'block';
+                    refreshPayBtnState();
+                    setTimeout(() => modal.classList.add('active'), 10);
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            // Don't interfere while user reads/selects text in the tooltip
+            if (tooltip.style.display !== 'none' && (e.target === tooltip || tooltip.contains(e.target))) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            let foundStar = null;
+            let foundStarIdx = null;
+            focusedStarHovered = false;
+
+            if (focusedStarIndex !== null) {
+                const focusedStar = stars[focusedStarIndex];
+                const dxFocus = mouseX - focusedStar.screenX;
+                const dyFocus = mouseY - focusedStar.screenY;
+                const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
+                if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
+                    focusedStarHovered = true;
+                    canvas.style.cursor = 'pointer';
+                }
+            }
+
+            // If a star is pinned from the panel, keep its tooltip anchored to it
+            if (pinnedStarIndex !== null) {
+                const ps = stars[pinnedStarIndex];
+                const dxP = mouseX - ps.screenX;
+                const dyP = mouseY - ps.screenY;
+                const hoverR = Math.max(ps.currentSize * 8, 25);
+                const isHoveringPin = dxP * dxP + dyP * dyP < hoverR * hoverR;
+
+                // Update tooltip position to track the star
+                let left = ps.screenX + 20;
+                let top  = ps.screenY - 20;
+                if (left + tooltip.offsetWidth  > window.innerWidth)  left = ps.screenX - tooltip.offsetWidth  - 20;
+                if (top  + tooltip.offsetHeight > window.innerHeight) top  = ps.screenY - tooltip.offsetHeight - 20;
+                if (left < 10) left = 10;
+                if (top  < 10) top  = 10;
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top  = `${top}px`;
+                tooltip.style.display = 'block';
+
+                canvas.style.cursor = isHoveringPin ? 'pointer' : 'crosshair';
+                return; // skip regular hover logic while a star is pinned
+            }
+
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                if (!star.isBought && !isNeighborStar(i)) continue;
+                const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
+                const hitRadius = Math.max(star.currentSize * 3, 10);
+                if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break; }
+            }
+
+            if (foundStar) {
+                focusedStarIndex = null;
+                hoveredStar = foundStar;
+                tooltip.style.display = 'block';
+                tooltip.className = foundStar.tier;
+                let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
+                tooltip.innerHTML = `
+                    <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
+                    <div class="tooltip-type">${label}</div>
+                    <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
+                    <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
+                    <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
+                `;
+                let left = e.clientX + 15;
+                let top = e.clientY + 15;
+                if (left + tooltip.offsetWidth > window.innerWidth) left = e.clientX - tooltip.offsetWidth - 15;
+                if (top + tooltip.offsetHeight > window.innerHeight) top = e.clientY - tooltip.offsetHeight - 15;
+                if (left < 10) left = 10;
+                if (top < 10) top = 10;
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+                if (!focusedStarHovered) canvas.style.cursor = 'crosshair';
+            } else { 
+                if (focusedStarIndex === null) {
+                    hoveredStar = null;
+                    tooltip.style.display = 'none'; 
+                }
+            }
+        });
+
+        canvas.addEventListener('click', (e) => {
+            if (hoveredStar) return;
+
+            // If a star is currently focused (from search or panel), just clear the pin and tooltip
+            if (focusedStarIndex !== null || pinnedStarIndex !== null) {
+                pinnedStarIndex = null;
+                tooltip.style.display = 'none';
+                return;
+            }
+
+            tooltip.style.display = 'none';
+
+            // No star focused — find the next free star and open purchase modal
+            let nextFreeIdx = null;
+            for (let i = 0; i < numStars; i++) {
+                if (!stars[i].isBought) { nextFreeIdx = i; break; }
+            }
+            if (nextFreeIdx === null) return;
+
+            clearPreviousNeighbors(previousFocusedIndex);
+            focusedStarIndex = nextFreeIdx;
+            previousFocusedIndex = nextFreeIdx;
+            updateNeighborsPanel(nextFreeIdx);
+
+            const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
+            const nStar = stars[nextFreeIdx];
+            nStar.x = (rScreenX - cx) * (nStar.z + 1) / 800;
+            nStar.y = (rScreenY - cy) * (nStar.z + 1) / 800;
+            targetXOffset = 0;
+            targetYOffset = 0;
+
+            activeClickedStarNumber = nextFreeIdx;
+            document.getElementById('modal-title').innerText = `Claim Star #${nextFreeIdx} (${Math.round(nStar.x)}, ${Math.round(nStar.y)})`;
+            modal.style.display = 'block';
+            refreshPayBtnState();
+            setTimeout(() => modal.classList.add('active'), 10);
+        });
+
+        modalClose.addEventListener('click', () => {
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+            payBtn.disabled = false;
+            payBtn.innerText = 'Proceed to Web3 Payment';
+            payBtn.style.background = '';
+            payBtn.style.color = '';
+        });
+
+        // Check live in DB whether a star is still free before allowing purchase
+        async function checkStarAvailability(starNumber) {
+            if (!db) return true; // can't check, allow optimistically
+            try {
+                const { data, error } = await db
+                    .from('purchased_stars')
+                    .select('star_number')
+                    .eq('star_number', starNumber)
+                    .maybeSingle();
+                if (error) return true; // on DB error, allow and let insert handle it
+                return data === null; // null means no row found = still free
+            } catch (e) {
+                return true;
+            }
+        }
+
+        // Disable/enable pay button based on whether the star is still available
+        async function refreshPayBtnState() {
+            if (activeClickedStarNumber === null) return;
+            const isFree = await checkStarAvailability(activeClickedStarNumber);
+            if (!isFree) {
+                payBtn.disabled = true;
+                payBtn.innerText = '⛔ Star Already Purchased';
+                payBtn.style.background = '#555';
+                payBtn.style.color = '#aaa';
+            } else {
+                payBtn.disabled = false;
+                payBtn.innerText = 'Proceed to Web3 Payment';
+                payBtn.style.background = '';
+                payBtn.style.color = '';
+            }
+        }
+
+        payBtn.addEventListener('click', async () => {
+            const userNameVal = ownerInput.value.trim() || "Anonymous";
+            const msgVal = msgInput.value.trim() || "To the moon! 🚀";
+            let userWalletAddress = "0xManualDogeTransferPayment";
+
+            payBtn.disabled = true;
+            payBtn.innerText = "Checking availability...";
+
+            // Live availability check right before payment
+            const stillFree = await checkStarAvailability(activeClickedStarNumber);
+            if (!stillFree) {
+                payBtn.innerText = '⛔ Star Already Purchased';
+                payBtn.style.background = '#555';
+                payBtn.style.color = '#aaa';
+                // Mark locally so UI updates
+                stars[activeClickedStarNumber].isBought = true;
+                alert(`⚠️ Star #${activeClickedStarNumber} was just purchased by someone else. Please reload the page and choose a different star.`);
+                return;
+            }
+
+            payBtn.innerText = "Connecting Wallet...";
+
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    if (accounts && accounts[0]) { userWalletAddress = accounts[0]; }
+                    await window.ethereum.request({
+                        method: 'eth_sendTransaction',
+                        params: [{ to: MERCHANT_WALLET, from: accounts, value: '0x0' }],
+                    });
+                } catch (e) { console.log("Wallet link bypassed."); }
+            }
+
+            payBtn.innerText = "Saving to Space Grid...";
+            try {
+                if (db) {
+                    const { error } = await db.from('purchased_stars').insert([
+                        { star_number: activeClickedStarNumber, user_name: userNameVal, wallet_address: userWalletAddress, tier: selectedTier, message: msgVal }
+                    ]);
+                    if (error) {
+                        // Duplicate key = someone else got it first during payment flow
+                        if (error.message && error.message.includes('duplicate key')) {
+                            stars[activeClickedStarNumber].isBought = true;
+                            payBtn.innerText = '⛔ Star Already Purchased';
+                            payBtn.style.background = '#555';
+                            payBtn.style.color = '#aaa';
+                            alert(`⚠️ Star #${activeClickedStarNumber} was purchased by someone else while you were completing payment. Please reload and choose a different star.`);
+                            return;
+                        }
+                        console.error("Supabase insert error:", error.message);
+                        alert(`⚠️ Database save failed: ${error.message}`);
+                        payBtn.disabled = false;
+                        payBtn.innerText = 'Proceed to Web3 Payment';
+                        payBtn.style.background = '';
+                        payBtn.style.color = '';
+                        return;
+                    }
+                }
+            } catch (err) { console.error("Database sync issue:", err.message); }
+
+            stars[activeClickedStarNumber].isBought = true;
+            stars[activeClickedStarNumber].user_name = userNameVal;
+            stars[activeClickedStarNumber].wallet_address = userWalletAddress;
+            stars[activeClickedStarNumber].tier = selectedTier;
+            stars[activeClickedStarNumber].message = msgVal;
+
+            // Close purchase modal
+            ownerInput.value = ""; msgInput.value = "";
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+            payBtn.disabled = false;
+            payBtn.innerText = "Proceed to Web3 Payment";
+
+            // Show congratulations overlay
+            const starNum  = activeClickedStarNumber;
+            const starObj  = stars[starNum];
+            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
+            const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
+
+            document.getElementById('congrats-title').textContent =
+                `Congratulations on purchasing star #${starNum} in this digital galaxy.`;
+            document.getElementById('congrats-link').textContent = starLink;
+
+            document.getElementById('congrats-copy-btn').onclick = () => {
+                navigator.clipboard.writeText(starLink).then(() => {
+                    const btn = document.getElementById('congrats-copy-btn');
+                    btn.textContent = 'COPIED!';
+                    setTimeout(() => btn.textContent = 'COPY', 2000);
+                });
+            };
+
+            document.getElementById('share-twitter').href =
+                `https://twitter.com/intent/tweet?text=${shareMsg}`;
+            document.getElementById('share-facebook').href =
+                `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(starLink)}`;
+            document.getElementById('share-instagram').onclick = () => {
+                navigator.clipboard.writeText(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
+                const btn = document.getElementById('share-instagram');
+                btn.textContent = 'Copied! Paste in Instagram';
+                setTimeout(() => btn.textContent = 'Instagram', 3000);
+            };
+            document.getElementById('share-whatsapp').href =
+                `https://wa.me/?text=${shareMsg}`;
+            document.getElementById('share-telegram').href =
+                `https://t.me/share/url?url=${encodeURIComponent(starLink)}&text=${encodeURIComponent('I bought my own star in the digital galaxy!')}`;
+            document.getElementById('share-viber').href =
+                `viber://forward?text=${shareMsg}`;
+
+            const congratsOverlay = document.getElementById('congrats-overlay');
+            congratsOverlay.classList.add('visible');
+            document.getElementById('congrats-close-btn').onclick = () => {
+                congratsOverlay.classList.remove('visible');
+            };
+        });
+
+        function animate() {
+            ctx.fillStyle = '#000002';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const time = (Date.now() - startTime) * 0.001;
+            if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
+            if (focusedStarIndex !== null) {
+                currentXOffset += (targetXOffset - currentXOffset) * 0.08;
+                currentYOffset += (targetYOffset - currentYOffset) * 0.08;
+            } else {
+                currentXOffset += (0 - currentXOffset) * 0.02;
+                currentYOffset += (0 - currentYOffset) * 0.02;
+            }
+
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                if (i >= 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
+
+                const factor = 800 / (star.z + globalZOffset + 1);
+                star.screenX = cx + (star.x + currentXOffset) * factor; 
+                star.screenY = cy + (star.y + currentYOffset) * factor;
+
+                if (star.screenX >= 0 && star.screenX <= canvas.width && star.screenY >= 0 && star.screenY <= canvas.height) {
+                    star.phase += star.flickerSpeed;
+                    const brightness = 0.4 + Math.sin(star.phase) * 0.6;
+                    const baseSize = (1 - (star.z + globalZOffset) / 8000) * 2.2;
+                    let size = Math.max(0.4, baseSize * (0.7 + brightness * 0.3));
+                    let starColor = `rgba(255, 235, 120, ${brightness})`;
+                    let auraColor = `rgba(255, 215, 0, ${brightness * 0.15})`;
+
+                    if (star.isBought && focusedStarIndex === i) {
+                        if (star.tier === 'basic') { size *= 2.0;
+                            starColor = `rgba(255, 235, 120, 1)`; } 
+                        else if (star.tier === 'supernova') {
+                            const pulse = 1.2 + Math.sin(time * 6) * 0.4;
+                            size *= 2.8 * pulse; starColor = `rgba(255, 51, 102, 1)`; auraColor = `rgba(255, 51, 102, 0.35)`;
+                        } else if (star.tier === 'constellation') {
+                            size *= 3.8;
+                            starColor = `rgba(0, 255, 255, 1)`; auraColor = `rgba(0, 255, 255, 0.4)`;
+                        }
+                    } else if (star.isBought) {
+                        // Non-focused purchased star: slightly brighter than a free star but no big aura
+                        size *= 1.4;
+                        starColor = `rgba(255, 235, 120, 0.7)`;
+                    }
+
+                    star.currentSize = size;
+
+                    if (focusedStarIndex === i) {
+                        // Hover pulse on the selected star
+                        if (focusedStarHovered) {
+                            size *= 2.4 + Math.sin(time * 10) * 0.3;
+                            auraColor = `rgba(255, 215, 0, 0.9)`;
+                        }
+                        // Glow ring — only on the selected star
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#ffd700';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                        // Full aura + core for selected star
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
+                        ctx.fillStyle = auraColor; ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                        ctx.fillStyle = starColor; ctx.fill();
+                    } else {
+                        // Neighbor / background / purchased stars: plain small dot, no glow ring
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 1.4, 0, Math.PI * 2);
+                        ctx.fillStyle = auraColor; ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                        ctx.fillStyle = starColor; ctx.fill();
+                    }
+                }
+            }
+
+            if (globalZOffset < 500) {
+                for (let i = 0; i < numParticles; i++) {
+                    const p = particles[i];
+                    p.z -= flySpeed;
+                    if (p.z <= 0) { p.z = 2000; p.x = (Math.random() - 0.5) * 2000;
+                        p.y = (Math.random() - 0.5) * 2000; }
+                    const pFactor = 800 / (p.z + 1);
+                    const pScreenX = cx + p.x * pFactor; const pScreenY = cy + p.y * pFactor;
+                    if (pScreenX >= 0 && pScreenX <= canvas.width && pScreenY >= 0 && pScreenY <= canvas.height) {
+                        const pSize = (1 - p.z / 2000) * 4.5;
+                        const alpha = (1 - p.z / 2000) * 0.6;
+                        ctx.beginPath(); ctx.moveTo(pScreenX, pScreenY);
+                        ctx.lineTo(cx + p.x * (800 / (p.z + flySpeed * 2.5 + 1)), cy + p.y * (800 / (p.z + flySpeed * 2.5 + 1)));
+                        ctx.strokeStyle = `rgba(255, 220, 160, ${alpha})`; ctx.lineWidth = pSize * 0.4; ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        // --- INFO OVERLAY (About / How to use / ToS / For You) ---
+        const infoOverlay = document.getElementById('info-overlay');
+        const infoLabel   = document.getElementById('info-overlay-label');
+        const infoText    = document.getElementById('info-overlay-text');
+
+        const infoContent = {
+            about: {
+                label: '✦ About',
+                text: `The idea for this project came about one lonely evening when I was looking at the sky and thought, "Who else can look at this sky with me, and how many stars can there be in this boundless space? What if we created a digital star space where everyone could have a star?"
+
+That's where it all began and grew into this creation! Now, you can not only acquire your own personal star but also know who owns the star next to you. And most importantly, this is digital eternity, where you will always have your own private corner for contemplating the starry sky while listening to pleasant ambient music.
+
+Don't forget to look at the stars nearby. Perhaps the person far away from you is actually much closer, and the glow of their star will bring you positive emotions. Welcome to this boundless, mysterious, and eternal star space.`
+            },
+            howto: {
+                label: '✦ How to Use',
+                text: `Becoming the owner of a star is very simple. If you click on the galaxy screen, a window will appear offering the opportunity to purchase a star. Clicking on the screen allows you to purchase a star by its serial number from those available for sale. If you want to purchase a star with a specific number, enter that number in the search box, and you'll be able to purchase the star with that number.
+
+Stars are divided into three types, each based on their visibility when searching in galactic space. However, the operating principle, search, and display are the same for all stars.
+
+Please remember to refresh the page if you decided to purchase a star. This will allow you to see available stars in real time.
+
+After selecting a star number, you'll need to enter the owner's information, name, or nickname. This is what will be displayed when searching for your star on the galaxy map.
+
+Next, you can leave a message for the universe, a message for the people who will be your allies and companions in this galactic space. Perhaps it's a wise saying, a link to your social media profile, or simply a message addressed to someone else. The choice is yours.
+
+After that, click the payment button, and after the payment is completed, you will become the owner of your star and receive digital immortality. All payments are accepted in DOGE coin. We're doing this to support the DOGE community.`
+            },
+            tos: {
+                label: '✦ Terms of Service',
+                text: `By clicking the purchase button, you automatically agree to the information below, so we recommend that you read this guide carefully!
+
+This project was created to unite people of all faiths, races, and backgrounds. This stellar world encompasses peace, tranquility, and positivity for everyone. Here, we forget loneliness, hostility, and evil intentions. Please keep this in mind before using this website.
+
+Users who disrupt the peace and balance of this universe will lose their membership in this community. If you plan to spread chaos and negativity, please remember: your data will be deleted, the star will be cleansed of negative energy, and, worst of all, you will not receive any financial compensation.
+
+Please respect each other, maintain decorum, and use correct reasoning in your messages to the universe.`
+            },
+            foryou: {
+                label: '✦ For You',
+                text: `If you're reading this message, you're not alone. We're here, we're with you, enjoying this boundless world of stars.`
+            }
+        };
+
+        function showInfoOverlay(key) {
+            const content = infoContent[key];
+            infoLabel.textContent = content.label;
+            infoText.textContent  = content.text;
+            infoOverlay.classList.add('visible');
+        }
+
+        infoOverlay.addEventListener('click', () => {
+            infoOverlay.classList.remove('visible');
+        });
+
+        document.getElementById('promo-about-btn').addEventListener('click',    () => showInfoOverlay('about'));
+        document.getElementById('promo-tutorial-btn').addEventListener('click', () => showInfoOverlay('howto'));
+        document.getElementById('promo-tos-btn').addEventListener('click',      () => showInfoOverlay('tos'));
+        document.getElementById('promo-faq-btn').addEventListener('click',      () => showInfoOverlay('foryou'));
+
+    </script>
+</body>
+</html>
