@@ -832,6 +832,7 @@
     </div>
     
     <div class="controls-container">
+        <button class="ui-btn" id="buy-star-btn">⭐ BUY A STAR</button>
         <button class="ui-btn" id="audio-btn">ENABLE AMBIENT</button>
     </div>
 
@@ -1297,7 +1298,7 @@
         });
 
         let hoveredStar = null;
-        let globalZOffset = 5000; const targetZOffset = 0; const flyInSpeed = 0.02;
+        let globalZOffset = 0; const targetZOffset = 0; const flyInSpeed = 0;
 
         const msgLimits = { basic: 80, supernova: 110, constellation: 200 };
 
@@ -1454,25 +1455,20 @@
         canvas.addEventListener('click', (e) => {
             if (hoveredStar) return;
 
-            // If a star is currently focused (from search or panel), just clear the pin and tooltip
-            if (focusedStarIndex !== null || pinnedStarIndex !== null) {
-                pinnedStarIndex = null;
-                tooltip.style.display = 'none';
-                return;
-            }
-
+            // Canvas click only dismisses the current pin/tooltip — never opens purchase modal
+            pinnedStarIndex = null;
             tooltip.style.display = 'none';
+        });
 
-            // No star focused — find the next free star and open purchase modal
+        // ── Shared: open purchase modal for next free star ──
+        function openBuyModal() {
             let nextFreeIdx = null;
             for (let i = 0; i < numStars; i++) {
                 if (!stars[i].isBought) { nextFreeIdx = i; break; }
             }
-            if (nextFreeIdx === null) return;
+            if (nextFreeIdx === null) { alert('All stars are purchased!'); return; }
 
-            clearPreviousNeighbors(previousFocusedIndex);
-            focusedStarIndex = nextFreeIdx;
-            previousFocusedIndex = nextFreeIdx;
+            setFocus(nextFreeIdx);
             updateNeighborsPanel(nextFreeIdx);
 
             const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
@@ -1483,11 +1479,15 @@
             targetYOffset = 0;
 
             activeClickedStarNumber = nextFreeIdx;
-            document.getElementById('modal-title').innerText = `Claim Star #${nextFreeIdx} (${Math.round(nStar.x)}, ${Math.round(nStar.y)})`;
+            document.getElementById('modal-title').innerText =
+                `Claim Star #${nextFreeIdx} (${Math.round(nStar.x)}, ${Math.round(nStar.y)})`;
             modal.style.display = 'block';
             refreshPayBtnState();
             setTimeout(() => modal.classList.add('active'), 10);
-        });
+        }
+
+        // Desktop "Buy a Star" button
+        document.getElementById('buy-star-btn').addEventListener('click', openBuyModal);
 
         modalClose.addEventListener('click', () => {
             modal.classList.remove('active');
@@ -1834,30 +1834,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
         }
 
         function openDrawerBuy() {
-            // Find next free star and open purchase modal
-            let nextFreeIdx = null;
-            for (let i = 0; i < numStars; i++) {
-                if (!stars[i].isBought) { nextFreeIdx = i; break; }
-            }
-            if (nextFreeIdx === null) { alert('All stars are purchased!'); return; }
-
-            setFocus(nextFreeIdx);
-            updateNeighborsPanel(nextFreeIdx);
-
-            const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
-            const nStar = stars[nextFreeIdx];
-            nStar.x = (rScreenX - cx) * (nStar.z + 1) / 800;
-            nStar.y = (rScreenY - cy) * (nStar.z + 1) / 800;
-            targetXOffset = 0;
-            targetYOffset = 0;
-
-            activeClickedStarNumber = nextFreeIdx;
-            document.getElementById('modal-title').innerText =
-                `Claim Star #${nextFreeIdx} (${Math.round(nStar.x)}, ${Math.round(nStar.y)})`;
-            modal.style.display = 'block';
-            refreshPayBtnState();
-            setTimeout(() => modal.classList.add('active'), 10);
-
+            openBuyModal();
             // Close drawer if open
             document.getElementById('mobile-drawer').classList.remove('open');
             currentDrawerTab = null;
