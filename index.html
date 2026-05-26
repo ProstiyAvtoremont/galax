@@ -549,120 +549,214 @@
             background: rgba(255,215,0,0.22);
             box-shadow: 0 0 18px rgba(255,215,0,0.3);
         }
-        /* ===================== RESPONSIVE ===================== */
+        /* ===================== RESPONSIVE — MOBILE FIRST ===================== */
 
-        /* Mobile portrait ≤ 480px */
-        @media (max-width: 480px) {
-            .search-container {
-                top: 10px; left: 10px; right: 10px;
-                width: auto; gap: 6px;
+        /* ── Mobile: ≤ 600px ── */
+        @media (max-width: 600px) {
+
+            /* Hide the left-side desktop panels entirely */
+            .search-container,
+            .promo-box,
+            #neighbors-panel { display: none !important; }
+
+            /* Bottom mobile toolbar */
+            .mobile-bar {
+                display: flex !important;
             }
-            .search-input { width: 100%; font-size: 12px; padding: 5px 8px; }
-            .search-btn   { font-size: 10px; padding: 6px 10px; white-space: nowrap; }
 
-            .promo-box {
-                top: 62px; left: 10px; right: 10px;
-                width: auto;
-            }
-            .promo-text { font-size: 11px; }
-            .promo-btn  { font-size: 10px; padding: 5px 0; }
-
-            #neighbors-panel {
-                position: fixed;
-                top: auto !important;
-                bottom: 80px;
-                left: 10px; right: 10px;
-                width: auto !important;
-                max-height: 36vh;
-            }
-            #neighbors-list { max-height: 28vh; }
-
+            /* Push ambient button up above mobile bar */
             .controls-container {
-                bottom: 8px; gap: 5px;
+                bottom: 70px;
+                gap: 6px;
                 flex-wrap: wrap;
                 justify-content: center;
-                padding: 0 6px;
-                width: calc(100% - 12px);
+                padding: 0 8px;
             }
-            .ui-btn { font-size: 10px; padding: 7px 10px; letter-spacing: 0.5px; }
+            .ui-btn { font-size: 11px; padding: 8px 14px; }
 
+            /* Mobile drawer */
+            #mobile-drawer {
+                display: flex !important;
+            }
+
+            /* Modal full-screen */
             #payment-modal {
-                width: 94vw !important;
-                max-height: 88vh;
+                width: 96vw !important;
+                max-height: 90vh;
                 overflow-y: auto;
                 padding: 18px 14px !important;
-                top: 50% !important; left: 50% !important;
+                border-radius: 16px !important;
             }
 
-            .congrats-box  { padding: 24px 16px 20px; }
+            /* Congrats overlay */
+            .congrats-box {
+                padding: 24px 16px 20px;
+                width: 94%;
+            }
             .congrats-title { font-size: 15px; }
             .congrats-share-row { gap: 6px; }
-            .share-btn { font-size: 10px; padding: 6px 8px; }
+            .share-btn { font-size: 11px; padding: 6px 10px; }
             .congrats-close-btn { padding: 9px 20px; font-size: 12px; }
 
-            .info-overlay-inner { padding: 24px 16px; margin: 20px auto; }
+            /* Info overlay */
+            .info-overlay-inner { padding: 24px 16px; margin: 16px auto; }
             .info-overlay-text  { font-size: 13px; }
 
+            /* Tooltip constrained to screen */
             #star-tooltip {
-                max-width: calc(100vw - 24px);
+                max-width: calc(100vw - 20px);
                 font-size: 12px;
-                left: 12px !important;
+                left: 10px !important;
+                right: 10px;
             }
         }
 
-        /* Mobile landscape / small tablet 481–768px */
-        @media (min-width: 481px) and (max-width: 768px) {
-            .search-container { top: 12px; left: 12px; }
-            .search-input { width: 120px; }
+        /* ── Tablet: 601–1024px ── */
+        @media (min-width: 601px) and (max-width: 1024px) {
+            .mobile-bar    { display: none !important; }
+            #mobile-drawer { display: none !important; }
 
-            .promo-box { top: 66px; left: 12px; width: 210px; }
-            .promo-text { font-size: 11px; }
-
-            #neighbors-panel {
-                top: auto !important;
-                bottom: 80px;
-                left: 12px;
-                width: 210px !important;
-                max-height: 34vh;
-            }
-            #neighbors-list { max-height: 26vh; }
-
-            .controls-container { bottom: 12px; gap: 8px; }
-            .ui-btn { font-size: 11px; padding: 9px 14px; }
-
-            #payment-modal {
-                width: 82vw !important;
-                max-height: 88vh;
-                overflow-y: auto;
-            }
-
-            .congrats-box { padding: 30px 24px; }
-            .share-btn { font-size: 11px; padding: 6px 10px; }
-        }
-
-        /* Tablet 769–1024px */
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .promo-box      { width: 218px; }
-            #neighbors-panel { width: 218px !important; }
-            .search-input   { width: 128px; }
+            .promo-box      { width: 215px; top: 68px; }
+            #neighbors-panel { width: 215px !important; top: 232px !important; }
+            .search-input   { width: 125px; }
             .controls-container { gap: 10px; }
             .ui-btn { font-size: 12px; padding: 10px 18px; }
-            #payment-modal  { width: 360px !important; }
+
+            #payment-modal  { width: 85vw !important; max-width: 400px; }
         }
 
-        /* Touch devices — remove hover-only effects */
+        /* ── Desktop: > 1024px ── */
+        @media (min-width: 1025px) {
+            .mobile-bar    { display: none !important; }
+            #mobile-drawer { display: none !important; }
+        }
+
+        /* Touch: replace hover with active states */
         @media (hover: none) and (pointer: coarse) {
             .ui-btn:hover, .promo-btn:hover,
-            .search-btn:hover, .neighbor-item:hover,
-            .congrats-copy-btn:hover, .congrats-close-btn:hover { all: unset; }
-            .ui-btn, .promo-btn, .search-btn,
-            .congrats-copy-btn, .congrats-close-btn {
-                cursor: pointer;
-            }
-            /* Tap active state instead */
-            .ui-btn:active      { background: rgba(255,215,0,0.25); }
-            .promo-btn:active   { background: rgba(255,215,0,0.22); }
-            .neighbor-item:active { background: rgba(255,215,0,0.07); }
+            .search-btn:hover, .neighbor-item:hover { background: unset; box-shadow: unset; }
+            .ui-btn:active      { background: rgba(255,215,0,0.25) !important; }
+            .promo-btn:active   { background: rgba(255,215,0,0.22) !important; }
+            .neighbor-item:active { background: rgba(255,215,0,0.07) !important; }
+        }
+
+        /* ── Mobile bar (bottom strip, always hidden on desktop) ── */
+        .mobile-bar {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 56px;
+            background: rgba(3, 3, 14, 0.97);
+            border-top: 1px solid rgba(255, 215, 0, 0.2);
+            backdrop-filter: blur(14px);
+            z-index: 80;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 4px;
+        }
+        .mob-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            background: none;
+            border: none;
+            color: rgba(255, 215, 0, 0.7);
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            padding: 6px 2px;
+            text-transform: uppercase;
+            transition: color 0.2s;
+        }
+        .mob-btn:active { color: #ffd700; }
+        .mob-btn .mob-icon { font-size: 18px; line-height: 1; }
+        .mob-btn.active-tab { color: #ffd700; }
+
+        /* ── Mobile drawer (slides up from bottom) ── */
+        #mobile-drawer {
+            display: none;
+            position: fixed;
+            bottom: 56px; left: 0; right: 0;
+            z-index: 79;
+            background: rgba(3, 3, 14, 0.98);
+            border-top: 1px solid rgba(255, 215, 0, 0.25);
+            border-radius: 20px 20px 0 0;
+            backdrop-filter: blur(16px);
+            max-height: 72vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+            padding-bottom: 8px;
+        }
+        #mobile-drawer.open {
+            transform: translateY(0);
+        }
+        .drawer-handle {
+            width: 36px; height: 4px;
+            background: rgba(255,215,0,0.3);
+            border-radius: 2px;
+            margin: 10px auto 6px;
+        }
+        .drawer-tab {
+            display: none;
+            padding: 10px 16px 6px;
+        }
+        .drawer-tab.active { display: block; }
+
+        /* Search tab inside drawer */
+        .mob-search-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .mob-search-row input {
+            flex: 1;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,215,0,0.25);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            padding: 10px 14px;
+            outline: none;
+        }
+        .mob-search-row input:focus { border-color: #ffd700; }
+        .mob-search-row button {
+            background: #ffd700;
+            border: none;
+            border-radius: 12px;
+            color: #000;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 10px 16px;
+            cursor: pointer;
+        }
+
+        /* Info tab buttons inside drawer */
+        .mob-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .mob-info-btn {
+            padding: 12px 0;
+            background: rgba(255,215,0,0.07);
+            border: 1px solid rgba(255,215,0,0.3);
+            border-radius: 14px;
+            color: #ffd700;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+        }
+        .mob-info-btn:active { background: rgba(255,215,0,0.2); }
+
+        /* Neighbors tab inside drawer */
+        #mob-neighbors-list {
+            padding: 0 0 4px;
         }
     </style>
 </head>
@@ -688,6 +782,54 @@
     </div>
 
     <canvas id="starfield"></canvas>
+
+    <!-- ── MOBILE BOTTOM BAR ── -->
+    <div class="mobile-bar" id="mobile-bar">
+        <button class="mob-btn" id="mob-tab-search" onclick="openDrawer('search')">
+            <span class="mob-icon">🔍</span>Search
+        </button>
+        <button class="mob-btn" id="mob-tab-buy" onclick="openDrawerBuy()">
+            <span class="mob-icon">⭐</span>Buy Star
+        </button>
+        <button class="mob-btn" id="mob-tab-stars" onclick="openDrawer('stars')">
+            <span class="mob-icon">🌌</span>Nearby
+        </button>
+        <button class="mob-btn" id="mob-tab-info" onclick="openDrawer('info')">
+            <span class="mob-icon">ℹ️</span>Info
+        </button>
+    </div>
+
+    <!-- ── MOBILE DRAWER ── -->
+    <div id="mobile-drawer">
+        <div class="drawer-handle"></div>
+
+        <!-- Search tab -->
+        <div class="drawer-tab" id="drawer-search">
+            <div class="mob-search-row">
+                <input type="number" id="mob-search-input" placeholder="Star number (0–1999999)" min="0" max="1999999">
+                <button id="mob-search-btn">GO</button>
+            </div>
+        </div>
+
+        <!-- Nearby stars tab -->
+        <div class="drawer-tab" id="drawer-stars">
+            <div id="mob-neighbors-title" style="font-size:11px;color:#ffd700;font-weight:bold;text-transform:uppercase;letter-spacing:1px;padding:4px 0 8px;"></div>
+            <div id="mob-neighbors-list"></div>
+        </div>
+
+        <!-- Info tab -->
+        <div class="drawer-tab" id="drawer-info">
+            <div class="mob-info-grid">
+                <button class="mob-info-btn" onclick="showInfoOverlay('about')">ABOUT</button>
+                <button class="mob-info-btn" onclick="showInfoOverlay('howto')">HOW TO USE</button>
+                <button class="mob-info-btn" onclick="showInfoOverlay('tos')">ToS</button>
+                <button class="mob-info-btn" onclick="showInfoOverlay('foryou')">FOR YOU</button>
+            </div>
+            <div style="padding:8px 0 4px; font-size:11px; color:rgba(255,215,0,0.5); text-align:center; letter-spacing:1px;">
+                Cheaper than coffee. Your personal digital star for just $1.
+            </div>
+        </div>
+    </div>
     
     <div class="controls-container">
         <button class="ui-btn" id="audio-btn">ENABLE AMBIENT</button>
@@ -1660,6 +1802,171 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
         document.getElementById('promo-tutorial-btn').addEventListener('click', () => showInfoOverlay('howto'));
         document.getElementById('promo-tos-btn').addEventListener('click',      () => showInfoOverlay('tos'));
         document.getElementById('promo-faq-btn').addEventListener('click',      () => showInfoOverlay('foryou'));
+
+        // ─────────────────────────────────────────────
+        // MOBILE DRAWER
+        // ─────────────────────────────────────────────
+        let currentDrawerTab = null;
+
+        function openDrawer(tab) {
+            const drawer = document.getElementById('mobile-drawer');
+            // Close if same tab tapped again
+            if (drawer.classList.contains('open') && currentDrawerTab === tab) {
+                drawer.classList.remove('open');
+                currentDrawerTab = null;
+                document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
+                return;
+            }
+            // Switch tabs
+            document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+            const target = document.getElementById('drawer-' + tab);
+            if (target) target.classList.add('active');
+            drawer.classList.add('open');
+            currentDrawerTab = tab;
+
+            // Highlight active nav button
+            document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
+            const btnMap = { search: 'mob-tab-search', stars: 'mob-tab-stars', info: 'mob-tab-info' };
+            if (btnMap[tab]) document.getElementById(btnMap[tab]).classList.add('active-tab');
+
+            // When opening nearby tab, sync content from desktop panel
+            if (tab === 'stars') syncMobNeighbours();
+        }
+
+        function openDrawerBuy() {
+            // Find next free star and open purchase modal
+            let nextFreeIdx = null;
+            for (let i = 0; i < numStars; i++) {
+                if (!stars[i].isBought) { nextFreeIdx = i; break; }
+            }
+            if (nextFreeIdx === null) { alert('All stars are purchased!'); return; }
+
+            setFocus(nextFreeIdx);
+            updateNeighborsPanel(nextFreeIdx);
+
+            const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
+            const nStar = stars[nextFreeIdx];
+            nStar.x = (rScreenX - cx) * (nStar.z + 1) / 800;
+            nStar.y = (rScreenY - cy) * (nStar.z + 1) / 800;
+            targetXOffset = 0;
+            targetYOffset = 0;
+
+            activeClickedStarNumber = nextFreeIdx;
+            document.getElementById('modal-title').innerText =
+                `Claim Star #${nextFreeIdx} (${Math.round(nStar.x)}, ${Math.round(nStar.y)})`;
+            modal.style.display = 'block';
+            refreshPayBtnState();
+            setTimeout(() => modal.classList.add('active'), 10);
+
+            // Close drawer if open
+            document.getElementById('mobile-drawer').classList.remove('open');
+            currentDrawerTab = null;
+        }
+
+        // Close drawer when tapping the canvas
+        canvas.addEventListener('touchstart', () => {
+            const drawer = document.getElementById('mobile-drawer');
+            if (drawer.classList.contains('open')) {
+                drawer.classList.remove('open');
+                currentDrawerTab = null;
+                document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
+            }
+        }, { passive: true });
+
+        // Mobile search button
+        const mobSearchBtn = document.getElementById('mob-search-btn');
+        const mobSearchInput = document.getElementById('mob-search-input');
+        if (mobSearchBtn && mobSearchInput) {
+            const doMobSearch = () => {
+                const idVal = parseInt(mobSearchInput.value);
+                if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
+                    alert('Please enter a valid Star ID from 0 to 1999999.');
+                    return;
+                }
+                // Mirror to desktop search and trigger
+                searchInput.value = idVal;
+                searchBtn.click();
+                // Close drawer
+                document.getElementById('mobile-drawer').classList.remove('open');
+                currentDrawerTab = null;
+                document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
+            };
+            mobSearchBtn.addEventListener('click', doMobSearch);
+            mobSearchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doMobSearch(); });
+        }
+
+        // Sync neighbours panel content into mobile drawer
+        function syncMobNeighbours() {
+            const desktopList  = document.getElementById('neighbors-list');
+            const mobList      = document.getElementById('mob-neighbors-list');
+            const desktopTitle = document.getElementById('neighbors-title');
+            const mobTitle     = document.getElementById('mob-neighbors-title');
+            if (!desktopList || !mobList) return;
+            mobTitle.textContent = desktopTitle ? desktopTitle.textContent : 'Adjacent Stars';
+            // Clone the list items so tap handlers are preserved via event delegation
+            mobList.innerHTML = desktopList.innerHTML;
+
+            // Re-attach click/dblclick on cloned items by delegating to star index
+            mobList.querySelectorAll('.neighbor-item').forEach((item, idx) => {
+                const origItem = desktopList.querySelectorAll('.neighbor-item')[idx];
+                if (!origItem) return;
+                item.addEventListener('click', () => origItem.click());
+                item.addEventListener('dblclick', () => origItem.dblclick());
+            });
+        }
+
+        // Auto-sync mobile neighbours whenever the desktop panel updates
+        const origUpdateNeighborsPanel = updateNeighborsPanel;
+        // Patch: after panel renders, sync mobile copy if drawer is open on 'stars' tab
+        const mobNeighboursObserver = new MutationObserver(() => {
+            if (currentDrawerTab === 'stars') syncMobNeighbours();
+        });
+        const desktopNeighboursList = document.getElementById('neighbors-list');
+        if (desktopNeighboursList) {
+            mobNeighboursObserver.observe(desktopNeighboursList, { childList: true, subtree: true });
+        }
+
+        // Touch tap on canvas: show tooltip for nearby purchased star (like hover on desktop)
+        canvas.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length === 0) return;
+            const touch = e.changedTouches[0];
+            const rect  = canvas.getBoundingClientRect();
+            const tx = touch.clientX - rect.left;
+            const ty = touch.clientY - rect.top;
+
+            // Find closest purchased or focused star within tap radius
+            let closest = null, closestIdx = null, minDist = 1600; // 40px radius²
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                if (!star.isBought && !isNeighborStar(i)) continue;
+                const dx = tx - star.screenX, dy = ty - star.screenY;
+                const d = dx*dx + dy*dy;
+                if (d < minDist) { minDist = d; closest = star; closestIdx = i; }
+            }
+
+            if (closest && closest.isBought) {
+                // Show tooltip for this star
+                let label = closest.tier === 'supernova' ? '⚡ Supernova Core'
+                          : closest.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star';
+                tooltip.className = closest.tier;
+                tooltip.innerHTML = `
+                    <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${closestIdx}</div>
+                    <div class="tooltip-type">${label}</div>
+                    <div class="tooltip-title">${closest.user_name || 'Anonymous'}</div>
+                    <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${closest.message || ''}"</div>
+                    <div style="font-size:11px;color:#ffd700;margin:4px 0;">
+                        Coords: X:${Math.round(closest.x)} Y:${Math.round(closest.y)} Z:${Math.round(closest.z)}
+                    </div>
+                `;
+                // Position tooltip above the tap point
+                const tipLeft = Math.min(touch.clientX - 110, window.innerWidth - 310);
+                tooltip.style.left = Math.max(10, tipLeft) + 'px';
+                tooltip.style.top  = Math.max(10, touch.clientY - 180) + 'px';
+                tooltip.style.display = 'block';
+            } else {
+                tooltip.style.display = 'none';
+            }
+        }, { passive: true });
 
     </script>
 </body>
