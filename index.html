@@ -1230,6 +1230,9 @@
             startTime = Date.now();
             animate();
 
+            // Auto-open neighbors panel on launch (show stars around #0)
+            setTimeout(() => updateNeighborsPanel(0), 400);
+
             // Auto-open star from shared link: ?star=N
             const urlParams = new URLSearchParams(window.location.search);
             const starParam = urlParams.get('star');
@@ -1468,7 +1471,9 @@
             }
             if (nextFreeIdx === null) { alert('All stars are purchased!'); return; }
 
-            setFocus(nextFreeIdx);
+            clearPreviousNeighbors(previousFocusedIndex);
+            focusedStarIndex = nextFreeIdx;
+            previousFocusedIndex = nextFreeIdx;
             updateNeighborsPanel(nextFreeIdx);
 
             const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
