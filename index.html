@@ -1602,6 +1602,10 @@
             stars[activeClickedStarNumber].tier = selectedTier;
             stars[activeClickedStarNumber].message = msgVal;
 
+            // Force the neighbors panel to refresh so the purchased star appears immediately
+            lastNeighborsFocus = null;
+            updateNeighborsPanel(activeClickedStarNumber);
+
             // Close purchase modal
             ownerInput.value = ""; msgInput.value = "";
             modal.classList.remove('active');
