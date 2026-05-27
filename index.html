@@ -949,13 +949,16 @@
             return focusedStarIndex !== null && i >= focusedStarIndex - 5 && i <= focusedStarIndex + 5;
         }
 
-        // Remove old focus-window stars from the render set
+        // Reset positions of stars that were neighbors of the old focus so they move off-screen
         function clearPreviousNeighbors(oldCenter) {
             if (oldCenter === null) return;
-            const lo = Math.max(0, oldCenter - 5);
-            const hi = Math.min(numStars - 1, oldCenter + 5);
-            for (let i = lo; i <= hi; i++) {
-                if (!purchasedMap.has(i)) focusWindowMap.delete(i);
+            const rangeMin = Math.max(0, oldCenter - 5);
+            const rangeMax = Math.min(numStars - 1, oldCenter + 5);
+            for (let i = rangeMin; i <= rangeMax; i++) {
+                if (stars[i].isBought) continue; // keep purchased stars in place
+                // Scatter them far outside the viewport so they're invisible
+                stars[i].x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+                stars[i].y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
             }
         }
 
@@ -1009,37 +1012,23 @@
             // Only clear and rebuild once fetch is done — prevents flicker
             neighborsList.innerHTML = '';
 
-            // Seed new focus-window stars into focusWindowMap and position them on screen
-            const slots = rangeMax - rangeMin + 1;
-            const freeMargin = 40;
-            const freeLeft = 270 + freeMargin;
-            const freeRight = canvas.width - freeMargin;
-            const freeTop = freeMargin;
-            const freeBottom = canvas.height - 90 - freeMargin;
-            const cols = 4, rows = Math.ceil(slots / 4);
-            const cellW = (freeRight - freeLeft) / Math.max(cols, 1);
-            const cellH = (freeBottom - freeTop) / Math.max(rows, 1);
-            let slot = 0;
+            // Place each non-purchased neighbor star at a random position in the free zone
+            // Uses getFreeZonePoint so stars always land in open sky, never under panels
+            // The random spread works on all screen sizes including mobile
             for (let i = rangeMin; i <= rangeMax; i++) {
-                if (purchasedMap.has(i)) { slot++; continue; } // purchased stars keep their position
-                if (i === centerIndex) { slot++; continue; }   // center positioned by search/click
-                // Ensure star object exists in focusWindowMap
-                if (!focusWindowMap.has(i)) focusWindowMap.set(i, makeStar(i));
-                const star = focusWindowMap.get(i);
-                const col = slot % cols;
-                const row = Math.floor(slot / cols);
-                const sx = freeLeft + cellW * col + cellW * (0.2 + Math.random() * 0.6);
-                const sy = freeTop  + cellH * row + cellH * (0.2 + Math.random() * 0.6);
-                star.x = (sx - cx) * (star.z + 1) / 800;
-                star.y = (sy - cy) * (star.z + 1) / 800;
-                slot++;
+                if (i === centerIndex) continue; // center positioned by search/click
+                const pStar = purchasedMap.get(i);
+                if (pStar) continue; // purchased stars keep their position
+                const fStar = focusWindowMap.get(i) || (() => { const s = makeStar(i); focusWindowMap.set(i, s); return s; })();
+                const { sx, sy } = getFreeZonePoint();
+                fStar.x = (sx - cx) * (fStar.z + 1) / 800;
+                fStar.y = (sy - cy) * (fStar.z + 1) / 800;
             }
 
             for (let i = rangeMin; i <= rangeMax; i++) {
                 const pStar = purchasedMap.get(i);
-                const inMemory = !!pStar;
                 const dbRow = dbMap[i];
-                const isPurchased = inMemory || !!dbRow;
+                const isPurchased = !!pStar || !!dbRow;
                 const tier = (dbRow && dbRow.tier) || (pStar && pStar.tier) || 'basic';
                 const userName = (dbRow && dbRow.user_name) || (pStar && pStar.user_name) || '';
                 const msg = (dbRow && dbRow.message) || (pStar && pStar.message) || '';
@@ -1066,7 +1055,7 @@
                 // Clicking a neighbor row pins that star on screen with its tooltip
                 item.addEventListener('click', () => {
                     const targetId = i;
-                    const tStar = purchasedMap.get(targetId) || focusWindowMap.get(targetId) || (() => { const s = makeStar(targetId); focusWindowMap.set(targetId, s); return s; })();
+                    const tStar = stars[targetId];
 
                     // Clear previous pin
                     pinnedStarIndex = null;
@@ -1148,7 +1137,7 @@
                 if (!isPurchased) {
                     item.addEventListener('dblclick', (e) => {
                         e.stopPropagation();
-                        const tStar = purchasedMap.get(i) || focusWindowMap.get(i) || (() => { const s = makeStar(i); focusWindowMap.set(i, s); return s; })();
+                        const tStar = stars[i];
                         activeClickedStarNumber = i;
                         focusedStarIndex = i;
                         const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
@@ -1172,21 +1161,21 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Returns a random {sx, sy} guaranteed to fall in the open sky area —
-        // away from the left-side panels (search + promo + neighbors) and the bottom bar.
+        // Returns a random {sx, sy} in open sky — avoids panels on all screen sizes
         function getFreeZonePoint() {
-            // Left panel column: ~260px wide, full height
-            // Bottom bar: ~80px tall
-            // Small margin so the star isn't flush against a panel edge
             const margin = 40;
-            const leftBlocked = 270;   // width of left-side UI column
-            const bottomBlocked = 90;  // height of bottom controls bar
-            const minX = leftBlocked + margin;
+            const isMobile = canvas.width <= 600;
+            // Mobile: panels are at bottom (~140px); no left column
+            // Desktop: left column ~270px; bottom bar ~90px
+            const leftBlocked   = isMobile ? margin : 270 + margin;
+            const bottomBlocked = isMobile ? 150    : 90;
+            const minX = leftBlocked;
             const maxX = canvas.width  - margin;
             const minY = margin;
             const maxY = canvas.height - bottomBlocked - margin;
-            const sx = minX + Math.random() * (maxX - minX);
-            const sy = minY + Math.random() * (maxY - minY);
+            // Ensure valid range even on very small screens
+            const sx = minX + Math.random() * Math.max(1, maxX - minX);
+            const sy = minY + Math.random() * Math.max(1, maxY - minY);
             return { sx, sy };
         }
 
@@ -1194,29 +1183,11 @@
         let cy = canvas.height / 2;
 
         const numStars = 2000000;
+        const stars = [];
+        const rotateSpeed = 0.3;
 
-        // ── Sparse star store ─────────────────────────────────────────────────
-        // We never need to iterate all 2M stars. We keep:
-        //   purchasedStars  Map<idx, starObj>   – loaded from DB, always rendered
-        //   displayStars    Map<idx, starObj>   – background field (first 5000) + current focus window
-        // Background positions stored in two compact Float32Arrays (no objects).
-        const BG_COUNT = 5000;
-        const bgX = new Float32Array(BG_COUNT);
-        const bgY = new Float32Array(BG_COUNT);
-        const bgZ = new Float32Array(BG_COUNT);
-        const bgPhase = new Float32Array(BG_COUNT);
-        const bgFlicker = new Float32Array(BG_COUNT);
-        for (let i = 0; i < BG_COUNT; i++) {
-            bgX[i] = (Math.random() - 0.5) * 3000;
-            bgY[i] = (Math.random() - 0.5) * 3000;
-            bgZ[i] = Math.random() * 3000;
-            bgPhase[i] = Math.random() * Math.PI * 2;
-            bgFlicker[i] = 0.02 + Math.random() * 0.05;
-        }
-
-        // Helper to create a star object used in the focus window and purchased map
-        function makeStar(idx) {
-            return {
+        for (let i = 0; i < numStars; i++) {
+            stars.push({
                 x: (Math.random() - 0.5) * 3000,
                 y: (Math.random() - 0.5) * 3000,
                 z: Math.random() * 3000,
@@ -1230,29 +1201,8 @@
                 screenX: 0,
                 screenY: 0,
                 currentSize: 0
-            };
+            });
         }
-
-        // Purchased stars (from DB) – sparse Map, only contains bought stars
-        const purchasedMap = new Map();   // idx → starObj
-
-        // Focus window stars – the ±5 neighbours currently on screen
-        const focusWindowMap = new Map(); // idx → starObj
-
-        // Unified accessor used by existing logic (search, click, etc.)
-        // Returns or lazily creates a star object for index i
-        const stars = new Proxy({}, {
-            get(_, prop) {
-                const i = Number(prop);
-                if (purchasedMap.has(i)) return purchasedMap.get(i);
-                if (focusWindowMap.has(i)) return focusWindowMap.get(i);
-                // Create on demand for focus window / neighbour operations
-                const s = makeStar(i);
-                focusWindowMap.set(i, s);
-                return s;
-            },
-            set(_, prop, value) { return true; } // writes go through the map objects directly
-        });
 
         // Stars array is ready — init Supabase, load purchased stars, then start rendering
         async function initSupabaseAndStart() {
@@ -1270,21 +1220,21 @@
             startTime = Date.now();
             animate();
 
-            // Auto-open neighbors panel on launch (show stars around #0)
-            setTimeout(() => updateNeighborsPanel(0), 400);
-
-            // Auto-open star from shared link: ?star=N
+            // Check for shared star link: ?star=N
             const urlParams = new URLSearchParams(window.location.search);
             const starParam = urlParams.get('star');
-            if (starParam !== null) {
-                const idVal = parseInt(starParam);
-                if (!isNaN(idVal) && idVal >= 0 && idVal < numStars) {
-                    // Small delay so the canvas has rendered at least one frame
-                    setTimeout(() => {
-                        searchInput.value = idVal;
-                        searchBtn.click();
-                    }, 300);
-                }
+            const sharedStarId = (starParam !== null) ? parseInt(starParam) : null;
+            const hasSharedStar = (sharedStarId !== null && !isNaN(sharedStarId) && sharedStarId >= 0 && sharedStarId < numStars);
+
+            if (hasSharedStar) {
+                // Open directly to the shared star — skip the default panel(0)
+                setTimeout(() => {
+                    searchInput.value = sharedStarId;
+                    searchBtn.click();
+                }, 500);
+            } else {
+                // Normal launch: open neighbors panel around #0
+                setTimeout(() => updateNeighborsPanel(0), 400);
             }
         }
         initSupabaseAndStart();
@@ -1301,20 +1251,24 @@
                 data.forEach(function(row) {
                     const idx = row.star_number;
                     if (idx !== null && idx >= 0 && idx < numStars) {
-                        const s = purchasedMap.get(idx) || makeStar(idx);
-                        s.isBought       = true;
-                        s.user_name      = row.user_name      || '';
-                        s.wallet_address = row.wallet_address || '';
-                        s.tier           = row.tier           || 'basic';
-                        s.message        = row.message        || 'To the moon! 🚀';
-                        purchasedMap.set(idx, s);
-                        focusWindowMap.delete(idx);
+                        stars[idx].isBought       = true;
+                        stars[idx].user_name      = row.user_name;
+                        stars[idx].wallet_address = row.wallet_address;
+                        stars[idx].tier           = row.tier    || 'basic';
+                        stars[idx].message        = row.message || 'To the moon! 🚀';
                     }
                 });
             } catch (e) {
                 console.warn("loadPurchasedStars failed:", String(e));
             }
         }
+        const numParticles = 100;
+        const particles = [];
+        const flySpeed = 5;
+        for (let i = 0; i < numParticles; i++) {
+            particles.push({ x: (Math.random() - 0.5) * 2000, y: (Math.random() - 0.5) * 2000, z: Math.random() * 2000 });
+        }
+
         let audioCtx = null;
         let isPlaying = false;
         function playTone(freq, duration, maxVolume) {
@@ -1363,10 +1317,10 @@
                 return;
             }
 
-            let targetStar = purchasedMap.get(idVal) || focusWindowMap.get(idVal);
-            if (!targetStar) { targetStar = makeStar(idVal); focusWindowMap.set(idVal, targetStar); }
+            const targetStar = stars[idVal];
             const { sx: randomScreenX, sy: randomScreenY } = getFreeZonePoint();
 
+            targetStar.x = (randomScreenX - cx) * (targetStar.z + 1) / 800;
             targetStar.y = (randomScreenY - cy) * (targetStar.z + 1) / 800;
             
             clearPreviousNeighbors(previousFocusedIndex);
@@ -1420,7 +1374,7 @@
             focusedStarHovered = false;
 
             if (focusedStarIndex !== null) {
-                const focusedStar = purchasedMap.get(focusedStarIndex) || focusWindowMap.get(focusedStarIndex);
+                const focusedStar = stars[focusedStarIndex];
                 const dxFocus = mouseX - focusedStar.screenX;
                 const dyFocus = mouseY - focusedStar.screenY;
                 const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
@@ -1432,7 +1386,7 @@
 
             // If a star is pinned from the panel, keep its tooltip anchored to it
             if (pinnedStarIndex !== null) {
-                const ps = purchasedMap.get(pinnedStarIndex) || focusWindowMap.get(pinnedStarIndex);
+                const ps = stars[pinnedStarIndex];
                 const dxP = mouseX - ps.screenX;
                 const dyP = mouseY - ps.screenY;
                 const hoverR = Math.max(ps.currentSize * 8, 25);
@@ -1453,14 +1407,12 @@
                 return; // skip regular hover logic while a star is pinned
             }
 
-            // Hit-test only the stars that are actually on screen (purchased + focus window)
-            const allVisible = [purchasedMap, focusWindowMap];
-            outer: for (const map of allVisible) {
-                for (const [i, star] of map) {
-                    const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
-                    const hitRadius = Math.max(star.currentSize * 3, 10);
-                    if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break outer; }
-                }
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                if (!star.isBought && !isNeighborStar(i)) continue;
+                const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
+                const hitRadius = Math.max(star.currentSize * 3, 10);
+                if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break; }
             }
 
             if (foundStar) {
@@ -1505,7 +1457,7 @@
         function openBuyModal() {
             let nextFreeIdx = null;
             for (let i = 0; i < numStars; i++) {
-                if (!purchasedMap.has(i)) { nextFreeIdx = i; break; }
+                if (!stars[i].isBought) { nextFreeIdx = i; break; }
             }
             if (nextFreeIdx === null) { alert('All stars are purchased!'); return; }
 
@@ -1515,8 +1467,7 @@
             updateNeighborsPanel(nextFreeIdx);
 
             const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
-            if (!focusWindowMap.has(nextFreeIdx)) focusWindowMap.set(nextFreeIdx, makeStar(nextFreeIdx));
-            const nStar = focusWindowMap.get(nextFreeIdx);
+            const nStar = stars[nextFreeIdx];
             nStar.x = (rScreenX - cx) * (nStar.z + 1) / 800;
             nStar.y = (rScreenY - cy) * (nStar.z + 1) / 800;
             targetXOffset = 0;
@@ -1590,7 +1541,7 @@
                 payBtn.style.background = '#555';
                 payBtn.style.color = '#aaa';
                 // Mark locally so UI updates
-                { const s = focusWindowMap.get(activeClickedStarNumber) || makeStar(activeClickedStarNumber); s.isBought = true; purchasedMap.set(activeClickedStarNumber, s); focusWindowMap.delete(activeClickedStarNumber); }
+                stars[activeClickedStarNumber].isBought = true;
                 alert(`⚠️ Star #${activeClickedStarNumber} was just purchased by someone else. Please reload the page and choose a different star.`);
                 return;
             }
@@ -1617,7 +1568,7 @@
                     if (error) {
                         // Duplicate key = someone else got it first during payment flow
                         if (error.message && error.message.includes('duplicate key')) {
-                            { const s = focusWindowMap.get(activeClickedStarNumber) || makeStar(activeClickedStarNumber); s.isBought = true; purchasedMap.set(activeClickedStarNumber, s); focusWindowMap.delete(activeClickedStarNumber); }
+                            stars[activeClickedStarNumber].isBought = true;
                             payBtn.innerText = '⛔ Star Already Purchased';
                             payBtn.style.background = '#555';
                             payBtn.style.color = '#aaa';
@@ -1635,15 +1586,11 @@
                 }
             } catch (err) { console.error("Database sync issue:", err.message); }
 
-            // Move star from focusWindowMap to purchasedMap and mark as bought
-            const boughtStar = focusWindowMap.get(activeClickedStarNumber) || makeStar(activeClickedStarNumber);
-            boughtStar.isBought       = true;
-            boughtStar.user_name      = userNameVal;
-            boughtStar.wallet_address = userWalletAddress;
-            boughtStar.tier           = selectedTier;
-            boughtStar.message        = msgVal;
-            purchasedMap.set(activeClickedStarNumber, boughtStar);
-            focusWindowMap.delete(activeClickedStarNumber);
+            stars[activeClickedStarNumber].isBought = true;
+            stars[activeClickedStarNumber].user_name = userNameVal;
+            stars[activeClickedStarNumber].wallet_address = userWalletAddress;
+            stars[activeClickedStarNumber].tier = selectedTier;
+            stars[activeClickedStarNumber].message = msgVal;
 
             // Force the neighbors panel to refresh so the purchased star appears immediately
             lastNeighborsFocus = null;
@@ -1658,7 +1605,7 @@
 
             // Show congratulations overlay
             const starNum  = activeClickedStarNumber;
-            const starObj = purchasedMap.get(starNum) || focusWindowMap.get(starNum) || makeStar(starNum);
+            const starObj  = stars[starNum];
             const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
             const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
 
@@ -1702,7 +1649,7 @@
             ctx.fillStyle = '#000002';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             const time = (Date.now() - startTime) * 0.001;
-
+            if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
             if (focusedStarIndex !== null) {
                 currentXOffset += (targetXOffset - currentXOffset) * 0.08;
                 currentYOffset += (targetYOffset - currentYOffset) * 0.08;
@@ -1711,97 +1658,88 @@
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
-            // ── 1. Background field via TypedArrays (no object overhead) ─────
-            if (focusedStarIndex === null) {
-                ctx.beginPath();
-                for (let i = 0; i < BG_COUNT; i++) {
-                    const factor = 800 / (bgZ[i] + 1);
-                    const sx = cx + bgX[i] * factor;
-                    const sy = cy + bgY[i] * factor;
-                    if (sx < 0 || sx > canvas.width || sy < 0 || sy > canvas.height) continue;
-                    bgPhase[i] += bgFlicker[i];
-                    const br = 0.4 + Math.sin(bgPhase[i]) * 0.6;
-                    const sz = Math.max(0.4, (1 - bgZ[i] / 8000) * 2.2 * (0.7 + br * 0.3));
-                    ctx.moveTo(sx + sz, sy);
-                    ctx.arc(sx, sy, sz, 0, 6.2832);
-                }
-                ctx.fillStyle = 'rgba(255,235,120,0.55)';
-                ctx.fill();
-            }
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                if (i >= 5000 && !star.isBought && i !== focusedStarIndex && !isNeighborStar(i)) continue;
 
-            // ── 2. Purchased stars ────────────────────────────────────────────
-            for (const [idx, star] of purchasedMap) {
-                const factor = 800 / (star.z + 1);
-                star.screenX = cx + (star.x + currentXOffset) * factor;
+                const factor = 800 / (star.z + globalZOffset + 1);
+                star.screenX = cx + (star.x + currentXOffset) * factor; 
                 star.screenY = cy + (star.y + currentYOffset) * factor;
-                if (star.screenX < 0 || star.screenX > canvas.width ||
-                    star.screenY < 0 || star.screenY > canvas.height) continue;
 
-                star.phase += star.flickerSpeed;
-                const br = 0.4 + Math.sin(star.phase) * 0.6;
-                let size = Math.max(0.4, (1 - star.z / 8000) * 2.2 * (0.7 + br * 0.3));
-                const isFocused = (idx === focusedStarIndex);
+                if (star.screenX >= 0 && star.screenX <= canvas.width && star.screenY >= 0 && star.screenY <= canvas.height) {
+                    star.phase += star.flickerSpeed;
+                    const brightness = 0.4 + Math.sin(star.phase) * 0.6;
+                    const baseSize = (1 - (star.z + globalZOffset) / 8000) * 2.2;
+                    let size = Math.max(0.4, baseSize * (0.7 + brightness * 0.3));
+                    let starColor = `rgba(255, 235, 120, ${brightness})`;
+                    let auraColor = `rgba(255, 215, 0, ${brightness * 0.15})`;
 
-                if (isFocused) {
-                    let sc, ac;
-                    if (star.tier === 'supernova') {
-                        size *= 2.8 * (1.2 + Math.sin(time * 6) * 0.4);
-                        sc = 'rgba(255,51,102,1)'; ac = 'rgba(255,51,102,0.35)';
-                    } else if (star.tier === 'constellation') {
-                        size *= 3.8; sc = 'rgba(0,255,255,1)'; ac = 'rgba(0,255,255,0.4)';
-                    } else {
-                        size *= 2.0; sc = 'rgba(255,235,120,1)'; ac = 'rgba(255,215,0,0.15)';
+                    if (star.isBought && focusedStarIndex === i) {
+                        if (star.tier === 'basic') { size *= 2.0;
+                            starColor = `rgba(255, 235, 120, 1)`; } 
+                        else if (star.tier === 'supernova') {
+                            const pulse = 1.2 + Math.sin(time * 6) * 0.4;
+                            size *= 2.8 * pulse; starColor = `rgba(255, 51, 102, 1)`; auraColor = `rgba(255, 51, 102, 0.35)`;
+                        } else if (star.tier === 'constellation') {
+                            size *= 3.8;
+                            starColor = `rgba(0, 255, 255, 1)`; auraColor = `rgba(0, 255, 255, 0.4)`;
+                        }
+                    } else if (star.isBought) {
+                        // Non-focused purchased star: slightly brighter than a free star but no big aura
+                        size *= 1.4;
+                        starColor = `rgba(255, 235, 120, 0.7)`;
                     }
-                    if (focusedStarHovered) { size *= 2.4 + Math.sin(time * 10) * 0.3; ac = 'rgba(255,215,0,0.9)'; }
+
                     star.currentSize = size;
-                    ctx.beginPath();
-                    ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, 6.2832);
-                    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5; ctx.stroke();
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, 6.2832);
-                    ctx.fillStyle = ac; ctx.fill();
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, 6.2832);
-                    ctx.fillStyle = sc; ctx.fill();
-                } else {
-                    star.currentSize = size * 1.4;
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 1.4, 0, 6.2832);
-                    ctx.fillStyle = 'rgba(255,235,120,0.7)'; ctx.fill();
+
+                    if (focusedStarIndex === i) {
+                        // Hover pulse on the selected star
+                        if (focusedStarHovered) {
+                            size *= 2.4 + Math.sin(time * 10) * 0.3;
+                            auraColor = `rgba(255, 215, 0, 0.9)`;
+                        }
+                        // Glow ring — only on the selected star
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#ffd700';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                        // Full aura + core for selected star
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 2.8, 0, Math.PI * 2);
+                        ctx.fillStyle = auraColor; ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                        ctx.fillStyle = starColor; ctx.fill();
+                    } else {
+                        // Neighbor / background / purchased stars: plain small dot, no glow ring
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size * 1.4, 0, Math.PI * 2);
+                        ctx.fillStyle = auraColor; ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(star.screenX, star.screenY, size, 0, Math.PI * 2);
+                        ctx.fillStyle = starColor; ctx.fill();
+                    }
                 }
             }
 
-            // ── 3. Focus-window stars (non-purchased neighbours) ──────────────
-            for (const [idx, star] of focusWindowMap) {
-                if (purchasedMap.has(idx)) continue;
-                const factor = 800 / (star.z + 1);
-                star.screenX = cx + (star.x + currentXOffset) * factor;
-                star.screenY = cy + (star.y + currentYOffset) * factor;
-                if (star.screenX < 0 || star.screenX > canvas.width ||
-                    star.screenY < 0 || star.screenY > canvas.height) continue;
-
-                star.phase += star.flickerSpeed;
-                const br = 0.4 + Math.sin(star.phase) * 0.6;
-                let size = Math.max(0.4, (1 - star.z / 8000) * 2.2 * (0.7 + br * 0.3));
-                const isFocused = (idx === focusedStarIndex);
-                star.currentSize = size;
-
-                if (isFocused) {
-                    size *= 2.0;
-                    if (focusedStarHovered) size *= 2.4 + Math.sin(time * 10) * 0.3;
-                    star.currentSize = size;
-                    ctx.beginPath();
-                    ctx.arc(star.screenX, star.screenY, size * 6 + Math.sin(time * 8) * 4, 0, 6.2832);
-                    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5; ctx.stroke();
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 2.8, 0, 6.2832);
-                    ctx.fillStyle = `rgba(255,215,0,${br * 0.15})`; ctx.fill();
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, 6.2832);
-                    ctx.fillStyle = `rgba(255,235,120,${br})`; ctx.fill();
-                } else {
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size * 1.4, 0, 6.2832);
-                    ctx.fillStyle = `rgba(255,215,0,${br * 0.15})`; ctx.fill();
-                    ctx.beginPath(); ctx.arc(star.screenX, star.screenY, size, 0, 6.2832);
-                    ctx.fillStyle = `rgba(255,235,120,${br})`; ctx.fill();
+            if (globalZOffset < 500) {
+                for (let i = 0; i < numParticles; i++) {
+                    const p = particles[i];
+                    p.z -= flySpeed;
+                    if (p.z <= 0) { p.z = 2000; p.x = (Math.random() - 0.5) * 2000;
+                        p.y = (Math.random() - 0.5) * 2000; }
+                    const pFactor = 800 / (p.z + 1);
+                    const pScreenX = cx + p.x * pFactor; const pScreenY = cy + p.y * pFactor;
+                    if (pScreenX >= 0 && pScreenX <= canvas.width && pScreenY >= 0 && pScreenY <= canvas.height) {
+                        const pSize = (1 - p.z / 2000) * 4.5;
+                        const alpha = (1 - p.z / 2000) * 0.6;
+                        ctx.beginPath(); ctx.moveTo(pScreenX, pScreenY);
+                        ctx.lineTo(cx + p.x * (800 / (p.z + flySpeed * 2.5 + 1)), cy + p.y * (800 / (p.z + flySpeed * 2.5 + 1)));
+                        ctx.strokeStyle = `rgba(255, 220, 160, ${alpha})`; ctx.lineWidth = pSize * 0.4; ctx.stroke();
+                    }
                 }
             }
-
             requestAnimationFrame(animate);
         }
         // --- INFO OVERLAY (About / How to use / ToS / For You) ---
@@ -1965,14 +1903,32 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
         }
 
         // Touch tap on canvas: show tooltip for nearby purchased star (like hover on desktop)
+        // Double-tap detection for mobile: return to main galaxy view
+        let lastTapTime = 0;
+
         canvas.addEventListener('touchend', (e) => {
             if (e.changedTouches.length === 0) return;
             const touch = e.changedTouches[0];
+            const now = Date.now();
+
+            // Double-tap: two taps within 300ms → return to main screen
+            if (now - lastTapTime < 300) {
+                clearPreviousNeighbors(previousFocusedIndex);
+                focusedStarIndex = null;
+                previousFocusedIndex = null;
+                pinnedStarIndex = null;
+                tooltip.style.display = 'none';
+                updateNeighborsPanel(null);
+                lastTapTime = 0;
+                return;
+            }
+            lastTapTime = now;
+
             const rect  = canvas.getBoundingClientRect();
             const tx = touch.clientX - rect.left;
             const ty = touch.clientY - rect.top;
 
-            // Find closest purchased or focused star within tap radius
+            // Find closest purchased or focused star within 40px tap radius
             let closest = null, closestIdx = null, minDist = 1600;
             for (const [i, star] of purchasedMap) {
                 const dx = tx - star.screenX, dy = ty - star.screenY;
@@ -1986,20 +1942,18 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             }
 
             if (closest && closest.isBought) {
-                // Show tooltip for this star
                 let label = closest.tier === 'supernova' ? '⚡ Supernova Core'
                           : closest.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star';
                 tooltip.className = closest.tier;
                 tooltip.innerHTML = `
                     <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${closestIdx}</div>
                     <div class="tooltip-type">${label}</div>
-                    <div class="tooltip-title">${closest.user_name || 'Anonymous'}</div>
-                    <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${closest.message || ''}"</div>
+                    <div class="tooltip-title">${sanitize(closest.user_name || 'Anonymous')}</div>
+                    <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${sanitize(closest.message || '')}"</div>
                     <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                         Coords: X:${Math.round(closest.x)} Y:${Math.round(closest.y)} Z:${Math.round(closest.z)}
                     </div>
                 `;
-                // Position tooltip above the tap point
                 const tipLeft = Math.min(touch.clientX - 110, window.innerWidth - 310);
                 tooltip.style.left = Math.max(10, tipLeft) + 'px';
                 tooltip.style.top  = Math.max(10, touch.clientY - 180) + 'px';
