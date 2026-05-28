@@ -603,12 +603,10 @@
             .info-overlay-inner { padding: 24px 16px; margin: 16px auto; }
             .info-overlay-text  { font-size: 13px; }
 
-            /* Tooltip constrained to screen */
+            /* Tooltip constrained to safe zone — positioning handled by JS */
             #star-tooltip {
                 max-width: calc(100vw - 20px);
                 font-size: 12px;
-                left: 10px !important;
-                right: 10px;
             }
         }
 
@@ -1260,7 +1258,7 @@
             _sY[i]      = (Math.random() - 0.5) * 3000;
             _sZ[i]      = Math.random() * 3000;
             _sPhase[i]  = Math.random() * Math.PI * 2;
-            _sFlicker[i]= 0.02 + Math.random() * 0.05;
+            _sFlicker[i]= 0.008 + Math.random() * 0.012;
         }
 
         // ── First-free-star cache ─────────────────────────────────────────────
@@ -1491,40 +1489,41 @@
             }
 
             if (foundStar) {
-                focusedStarIndex = null;
                 hoveredStar = foundStar;
-                tooltip.style.display = 'block';
-                tooltip.className = foundStar.tier;
-                let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
-                tooltip.innerHTML = `
-                    <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
-                    <div class="tooltip-type">${label}</div>
-                    <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
-                    <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
-                    <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
-                `;
-                let left = e.clientX + 15;
-                let top = e.clientY + 15;
-                if (left + tooltip.offsetWidth > window.innerWidth) left = e.clientX - tooltip.offsetWidth - 15;
-                if (top + tooltip.offsetHeight > window.innerHeight) top = e.clientY - tooltip.offsetHeight - 15;
-                if (left < 10) left = 10;
-                if (top < 10) top = 10;
-                tooltip.style.left = `${left}px`;
-                tooltip.style.top = `${top}px`;
-                if (!focusedStarHovered) canvas.style.cursor = 'crosshair';
-            } else { 
-                if (focusedStarIndex === null) {
-                    hoveredStar = null;
-                    tooltip.style.display = 'none'; 
+                // Only update tooltip while actively hovering — don't pin to focusedStarIndex
+                if (pinnedStarIndex === null) {
+                    focusedStarIndex = null;
+                    tooltip.style.display = 'block';
+                    tooltip.className = foundStar.tier;
+                    let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
+                    tooltip.innerHTML = `
+                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
+                        <div class="tooltip-type">${label}</div>
+                        <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
+                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
+                        <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
+                    `;
+                    let left = e.clientX + 15;
+                    let top = e.clientY + 15;
+                    if (left + tooltip.offsetWidth > window.innerWidth) left = e.clientX - tooltip.offsetWidth - 15;
+                    if (top + tooltip.offsetHeight > window.innerHeight) top = e.clientY - tooltip.offsetHeight - 15;
+                    if (left < 10) left = 10;
+                    if (top < 10) top = 10;
+                    tooltip.style.left = `${left}px`;
+                    tooltip.style.top = `${top}px`;
                 }
+                if (!focusedStarHovered) canvas.style.cursor = 'crosshair';
+            } else {
+                hoveredStar = null;
+                // Do NOT hide the tooltip here — it stays visible until the user clicks the canvas.
+                // This way the description window persists after the cursor moves away.
             }
         });
 
         canvas.addEventListener('click', (e) => {
-            if (hoveredStar) return;
-
-            // Canvas click only dismisses the current pin/tooltip — never opens purchase modal
+            // Always dismiss tooltip and pin on canvas click — this is the only way to close it on desktop
             pinnedStarIndex = null;
+            hoveredStar = null;
             tooltip.style.display = 'none';
         });
 
@@ -1778,7 +1777,7 @@
 
                 if (sx >= 0 && sx <= cw && sy >= 0 && sy <= ch) {
                     _sPhase[i] += _sFlicker[i];
-                    const brightness = 0.4 + Math.sin(_sPhase[i]) * 0.6;
+                    const brightness = 0.55 + Math.sin(_sPhase[i]) * 0.45;
                     const baseSize = (1 - (sz + gzo) / 8000) * 2.2;
                     let size = Math.max(0.4, baseSize * (0.7 + brightness * 0.3));
                     let starColor = _yellow(brightness);
@@ -2036,11 +2035,31 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                         Coords: X:${Math.round(closest.x)} Y:${Math.round(closest.y)} Z:${Math.round(closest.z)}
                     </div>
                 `;
-                // Position tooltip above the tap point
-                const tipLeft = Math.min(touch.clientX - 110, window.innerWidth - 310);
-                tooltip.style.left = Math.max(10, tipLeft) + 'px';
-                tooltip.style.top  = Math.max(10, touch.clientY - 180) + 'px';
                 tooltip.style.display = 'block';
+
+                // ── Safe-zone positioning for mobile ──────────────────────────
+                // Blocked areas: bottom bar 56px + controls ~60px above it = 116px from bottom.
+                // Tooltip max-height is 260px; we also want a 10px margin from all edges.
+                const tipW   = tooltip.offsetWidth  || 220;
+                const tipH   = tooltip.offsetHeight || 180;
+                const margin = 10;
+                const safeBottom = window.innerHeight - 116 - margin; // top edge of controls area
+                const safeRight  = window.innerWidth  - margin;
+
+                // Prefer to show above the tap point; fall back to below if not enough room
+                let tipTop = touch.clientY - tipH - margin;
+                if (tipTop < margin) tipTop = touch.clientY + margin; // show below tap instead
+                // Clamp so it never slides under the bottom controls
+                if (tipTop + tipH > safeBottom) tipTop = safeBottom - tipH;
+                if (tipTop < margin) tipTop = margin;
+
+                // Horizontally centred on tap, clamped to screen
+                let tipLeft = touch.clientX - tipW / 2;
+                if (tipLeft < margin) tipLeft = margin;
+                if (tipLeft + tipW > safeRight) tipLeft = safeRight - tipW;
+
+                tooltip.style.left = tipLeft + 'px';
+                tooltip.style.top  = tipTop  + 'px';
             } else {
                 tooltip.style.display = 'none';
             }
