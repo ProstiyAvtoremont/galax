@@ -346,7 +346,13 @@
         .neighbor-num {
             font-size: 10px;
             color: #666;
-            min-width: 44px;
+            width: 58px;
+            min-width: 58px;
+            max-width: 58px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 0;
             font-variant-numeric: tabular-nums;
         }
         .neighbor-num.is-selected-num {
@@ -717,6 +723,8 @@
         }
         .mob-search-row input {
             flex: 1;
+            min-width: 0;
+            box-sizing: border-box;
             background: rgba(255,255,255,0.07);
             border: 1px solid rgba(255,215,0,0.25);
             border-radius: 12px;
