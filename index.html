@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>DOGE Starfield Space — Buy Your Own Star</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -19,7 +19,7 @@
             top: 0;
             left: 0;
             cursor: crosshair;
-            will-change: contents; /* hint compositor to keep canvas on its own layer */
+            will-change: contents;
         }
         
         .controls-container {
@@ -180,7 +180,6 @@
             transform: translate(-50%, -50%) scale(0.9);
             background: rgba(7, 7, 20, 0.95);
             border: 1px solid #ffd700;
-            contain: layout;
             box-shadow: 0 0 40px rgba(255, 215, 0, 0.25);
             border-radius: 20px;
             padding: 25px;
@@ -633,17 +632,17 @@
             #mobile-drawer { display: none !important; }
         }
 
-        /* Touch: replace hover with active states; also drop expensive backdrop-filter on low-power devices */
+        /* Touch: replace hover with active states */
         @media (hover: none) and (pointer: coarse) {
             .ui-btn:hover, .promo-btn:hover,
             .search-btn:hover, .neighbor-item:hover { background: unset; box-shadow: unset; }
             .ui-btn:active      { background: rgba(255,215,0,0.25) !important; }
             .promo-btn:active   { background: rgba(255,215,0,0.22) !important; }
             .neighbor-item:active { background: rgba(255,215,0,0.07) !important; }
-            /* Skip blur compositing on mobile — big GPU win */
-            .search-container, .promo-box, #neighbors-panel,
+            /* Drop expensive backdrop-filter blur on mobile — large GPU saving */
+            .search-container, .promo-box, #neighbors-panel, .ui-btn,
             .mobile-bar, #mobile-drawer, #star-tooltip,
-            #payment-modal, #info-overlay { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+            #payment-modal { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
         }
 
         /* ── Mobile bar (bottom strip, always hidden on desktop) ── */
@@ -1201,83 +1200,77 @@
         const numStars = 2000000;
         const rotateSpeed = 0.3;
 
-        // ── Typed-array star storage ──────────────────────────────────────────
-        // Replaces 2M JS objects with compact Float32Arrays — ~10× less memory,
-        // much better cache locality in the render loop.
-        //   starX[i], starY[i], starZ[i]          – 3-D position
-        //   starPhase[i], starFlicker[i]           – flicker animation
-        //   starScreenX[i], starScreenY[i]         – projected screen coords
-        //   starSize[i]                             – current rendered radius
-        //   starBought[i]  (Uint8)                 – 0 = free, 1 = basic, 2 = supernova, 3 = constellation
-        //   starBoughtBool[i] (Uint8)              – 1 if owned, 0 if free (fast bool check)
-        // Per-star metadata (name/msg/wallet) only for bought stars → sparse Map
-        const starX        = new Float32Array(numStars);
-        const starY        = new Float32Array(numStars);
-        const starZ        = new Float32Array(numStars);
-        const starPhase    = new Float32Array(numStars);
-        const starFlicker  = new Float32Array(numStars);
-        const starScreenX  = new Float32Array(numStars);
-        const starScreenY  = new Float32Array(numStars);
-        const starSize     = new Float32Array(numStars);
-        const starTier     = new Uint8Array(numStars);   // 0=basic,1=supernova,2=constellation
-        const starOwned    = new Uint8Array(numStars);   // 1 if purchased
-        // Metadata stored sparsely — only for bought stars
-        const starMeta     = new Map(); // i → {user_name, message, wallet_address}
+        // ── Typed-array backing store ──────────────────────────────────────────
+        // All numeric star data lives in compact typed arrays (≈96 MB vs ≈1.4 GB for plain objects).
+        // Each `stars[i]` is a tiny shim object whose properties are getters/setters
+        // backed by these arrays — so every existing `star.x = v` / `star.isBought`
+        // call-site continues to work with no changes elsewhere in the code.
+        const _sX        = new Float32Array(numStars);
+        const _sY        = new Float32Array(numStars);
+        const _sZ        = new Float32Array(numStars);
+        const _sPhase    = new Float32Array(numStars);
+        const _sFlicker  = new Float32Array(numStars);
+        const _sScreenX  = new Float32Array(numStars);
+        const _sScreenY  = new Float32Array(numStars);
+        const _sSize     = new Float32Array(numStars);
+        const _sTier     = new Uint8Array(numStars);  // 0=basic 1=supernova 2=constellation
+        const _sOwned    = new Uint8Array(numStars);  // 0=free 1=bought
+        const _sMeta     = new Map();                  // sparse: i → {user_name,message,wallet_address}
 
-        // Shim the legacy `stars[i]` object API used throughout the rest of the code
-        // so every existing call-site continues to work without modification.
-        const stars = new Proxy({}, {
-            get(_, prop) {
-                const i = +prop;
-                if (!Number.isFinite(i)) return undefined;
-                return {
-                    get x()              { return starX[i]; },
-                    set x(v)             { starX[i] = v; },
-                    get y()              { return starY[i]; },
-                    set y(v)             { starY[i] = v; },
-                    get z()              { return starZ[i]; },
-                    set z(v)             { starZ[i] = v; },
-                    get phase()          { return starPhase[i]; },
-                    set phase(v)         { starPhase[i] = v; },
-                    get flickerSpeed()   { return starFlicker[i]; },
-                    set flickerSpeed(v)  { starFlicker[i] = v; },
-                    get screenX()        { return starScreenX[i]; },
-                    set screenX(v)       { starScreenX[i] = v; },
-                    get screenY()        { return starScreenY[i]; },
-                    set screenY(v)       { starScreenY[i] = v; },
-                    get currentSize()    { return starSize[i]; },
-                    set currentSize(v)   { starSize[i] = v; },
-                    get isBought()       { return starOwned[i] === 1; },
-                    set isBought(v)      { starOwned[i] = v ? 1 : 0; if (v) firstFreeDirty = true; },
-                    get tier()           { return ['basic','supernova','constellation'][starTier[i]] || 'basic'; },
-                    set tier(v)          { starTier[i] = v === 'supernova' ? 1 : v === 'constellation' ? 2 : 0; },
-                    get user_name()      { return (starMeta.get(i) || {}).user_name || ''; },
-                    set user_name(v)     { let m = starMeta.get(i); if (!m) { m = {}; starMeta.set(i, m); } m.user_name = v; },
-                    get message()        { return (starMeta.get(i) || {}).message || ''; },
-                    set message(v)       { let m = starMeta.get(i); if (!m) { m = {}; starMeta.set(i, m); } m.message = v; },
-                    get wallet_address() { return (starMeta.get(i) || {}).wallet_address || ''; },
-                    set wallet_address(v){ let m = starMeta.get(i); if (!m) { m = {}; starMeta.set(i, m); } m.wallet_address = v; },
-                };
-            }
-        });
+        // Shared prototype — defined once, reused by all 2M shim objects
+        const StarProto = {
+            get x()              { return _sX[this._i]; },
+            set x(v)             { _sX[this._i] = v; },
+            get y()              { return _sY[this._i]; },
+            set y(v)             { _sY[this._i] = v; },
+            get z()              { return _sZ[this._i]; },
+            set z(v)             { _sZ[this._i] = v; },
+            get phase()          { return _sPhase[this._i]; },
+            set phase(v)         { _sPhase[this._i] = v; },
+            get flickerSpeed()   { return _sFlicker[this._i]; },
+            set flickerSpeed(v)  { _sFlicker[this._i] = v; },
+            get screenX()        { return _sScreenX[this._i]; },
+            set screenX(v)       { _sScreenX[this._i] = v; },
+            get screenY()        { return _sScreenY[this._i]; },
+            set screenY(v)       { _sScreenY[this._i] = v; },
+            get currentSize()    { return _sSize[this._i]; },
+            set currentSize(v)   { _sSize[this._i] = v; },
+            get isBought()       { return _sOwned[this._i] === 1; },
+            set isBought(v)      { _sOwned[this._i] = v ? 1 : 0; if (v) _firstFreeDirty = true; },
+            get tier() {
+                const t = _sTier[this._i];
+                return t === 1 ? 'supernova' : t === 2 ? 'constellation' : 'basic';
+            },
+            set tier(v)          { _sTier[this._i] = v === 'supernova' ? 1 : v === 'constellation' ? 2 : 0; },
+            get user_name()      { const m = _sMeta.get(this._i); return m ? (m.user_name || '') : ''; },
+            set user_name(v)     { let m = _sMeta.get(this._i); if (!m) { m = {}; _sMeta.set(this._i, m); } m.user_name = v; },
+            get message()        { const m = _sMeta.get(this._i); return m ? (m.message || '') : ''; },
+            set message(v)       { let m = _sMeta.get(this._i); if (!m) { m = {}; _sMeta.set(this._i, m); } m.message = v; },
+            get wallet_address() { const m = _sMeta.get(this._i); return m ? (m.wallet_address || '') : ''; },
+            set wallet_address(v){ let m = _sMeta.get(this._i); if (!m) { m = {}; _sMeta.set(this._i, m); } m.wallet_address = v; },
+        };
 
-        // Populate typed arrays
+        // Build the stars array: 2M tiny objects that share StarProto
+        const stars = new Array(numStars);
         for (let i = 0; i < numStars; i++) {
-            starX[i]       = (Math.random() - 0.5) * 3000;
-            starY[i]       = (Math.random() - 0.5) * 3000;
-            starZ[i]       = Math.random() * 3000;
-            starPhase[i]   = Math.random() * Math.PI * 2;
-            starFlicker[i] = 0.02 + Math.random() * 0.05;
+            const s = Object.create(StarProto);
+            s._i = i;
+            stars[i] = s;
+            _sX[i]      = (Math.random() - 0.5) * 3000;
+            _sY[i]      = (Math.random() - 0.5) * 3000;
+            _sZ[i]      = Math.random() * 3000;
+            _sPhase[i]  = Math.random() * Math.PI * 2;
+            _sFlicker[i]= 0.02 + Math.random() * 0.05;
         }
 
         // ── First-free-star cache ─────────────────────────────────────────────
-        // openBuyModal() used to scan 2M entries every call.
+        // openBuyModal() used to scan 2M entries every call — now O(1) amortised.
         let _firstFreeCache = 0;
-        let firstFreeDirty  = false;
+        let _firstFreeDirty = false;
         function getFirstFreeStar() {
-            if (firstFreeDirty || starOwned[_firstFreeCache] === 1) {
-                firstFreeDirty = false;
-                while (_firstFreeCache < numStars && starOwned[_firstFreeCache] === 1) _firstFreeCache++;
+            if (_firstFreeDirty || _sOwned[_firstFreeCache] === 1) {
+                _firstFreeDirty = false;
+                while (_firstFreeCache < numStars && _sOwned[_firstFreeCache] === 1) _firstFreeCache++;
             }
             return _firstFreeCache < numStars ? _firstFreeCache : null;
         }
@@ -1440,13 +1433,11 @@
             }
         });
 
-        let _lastMouseTime = 0;
+        let _lastMouseMs = 0;
         canvas.addEventListener('mousemove', (e) => {
-            // Throttle to ~60 fps — mousemove can fire >200× per second
-            const now = performance.now();
-            if (now - _lastMouseTime < 14) return;
-            _lastMouseTime = now;
-
+            const _now = performance.now();
+            if (_now - _lastMouseMs < 14) return; // ~70fps cap on mousemove
+            _lastMouseMs = _now;
             // Don't interfere while user reads/selects text in the tooltip
             if (tooltip.style.display !== 'none' && (e.target === tooltip || tooltip.contains(e.target))) return;
 
@@ -1458,9 +1449,10 @@
             focusedStarHovered = false;
 
             if (focusedStarIndex !== null) {
-                const dxFocus = mouseX - starScreenX[focusedStarIndex];
-                const dyFocus = mouseY - starScreenY[focusedStarIndex];
-                const focusRadius = Math.max(starSize[focusedStarIndex] * 8, 25);
+                const focusedStar = stars[focusedStarIndex];
+                const dxFocus = mouseX - focusedStar.screenX;
+                const dyFocus = mouseY - focusedStar.screenY;
+                const focusRadius = Math.max(focusedStar.currentSize * 8, 25);
                 if (dxFocus * dxFocus + dyFocus * dyFocus < focusRadius * focusRadius) {
                     focusedStarHovered = true;
                     canvas.style.cursor = 'pointer';
@@ -1469,17 +1461,17 @@
 
             // If a star is pinned from the panel, keep its tooltip anchored to it
             if (pinnedStarIndex !== null) {
-                const psx = starScreenX[pinnedStarIndex];
-                const psy = starScreenY[pinnedStarIndex];
-                const dxP = mouseX - psx;
-                const dyP = mouseY - psy;
-                const hoverR = Math.max(starSize[pinnedStarIndex] * 8, 25);
+                const ps = stars[pinnedStarIndex];
+                const dxP = mouseX - ps.screenX;
+                const dyP = mouseY - ps.screenY;
+                const hoverR = Math.max(ps.currentSize * 8, 25);
                 const isHoveringPin = dxP * dxP + dyP * dyP < hoverR * hoverR;
 
-                let left = psx + 20;
-                let top  = psy - 20;
-                if (left + tooltip.offsetWidth  > window.innerWidth)  left = psx - tooltip.offsetWidth  - 20;
-                if (top  + tooltip.offsetHeight > window.innerHeight) top  = psy - tooltip.offsetHeight - 20;
+                // Update tooltip position to track the star
+                let left = ps.screenX + 20;
+                let top  = ps.screenY - 20;
+                if (left + tooltip.offsetWidth  > window.innerWidth)  left = ps.screenX - tooltip.offsetWidth  - 20;
+                if (top  + tooltip.offsetHeight > window.innerHeight) top  = ps.screenY - tooltip.offsetHeight - 20;
                 if (left < 10) left = 10;
                 if (top  < 10) top  = 10;
                 tooltip.style.left = `${left}px`;
@@ -1487,14 +1479,15 @@
                 tooltip.style.display = 'block';
 
                 canvas.style.cursor = isHoveringPin ? 'pointer' : 'crosshair';
-                return;
+                return; // skip regular hover logic while a star is pinned
             }
 
             for (let i = 0; i < numStars; i++) {
-                if (!starOwned[i] && !isNeighborStar(i)) continue;
-                const dx = mouseX - starScreenX[i]; const dy = mouseY - starScreenY[i];
-                const hitRadius = Math.max(starSize[i] * 3, 10);
-                if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = stars[i]; foundStarIdx = i; break; }
+                const star = stars[i];
+                if (!star.isBought && !isNeighborStar(i)) continue;
+                const dx = mouseX - star.screenX; const dy = mouseY - star.screenY;
+                const hitRadius = Math.max(star.currentSize * 3, 10);
+                if (dx * dx + dy * dy < hitRadius * hitRadius) { foundStar = star; foundStarIdx = i; break; }
             }
 
             if (foundStar) {
@@ -1725,31 +1718,36 @@
         });
 
         // ── Pre-built color strings (avoid per-frame string allocation) ────────
-        const COL_BG          = '#000002';
-        const COL_RING        = '#ffd700';
-        // rgba strings built once as templates — the brightness/alpha varies so we
-        // keep two helpers that build only the alpha portion (much cheaper than
-        // building the full "rgba(r,g,b,a)" string each frame for 5000 stars).
-        function rgbaYellow(a)   { return `rgba(255,235,120,${a.toFixed(2)})`; }
-        function rgbaAuraY(a)    { return `rgba(255,215,0,${a.toFixed(2)})`; }
-        const COL_SUPERNOVA  = 'rgba(255,51,102,1)';
-        const COL_CONSTELL   = 'rgba(0,255,255,1)';
-        const COL_SN_AURA    = 'rgba(255,51,102,0.35)';
-        const COL_CO_AURA    = 'rgba(0,255,255,0.40)';
-        const COL_BOUGHT_DIM = 'rgba(255,235,120,0.70)';
+        const _COL_RING     = '#ffd700';
+        const _COL_SN       = 'rgba(255,51,102,1)';
+        const _COL_CO       = 'rgba(0,255,255,1)';
+        const _COL_SN_AURA  = 'rgba(255,51,102,0.35)';
+        const _COL_CO_AURA  = 'rgba(0,255,255,0.40)';
+        const _COL_BUY_DIM  = 'rgba(255,235,120,0.70)';
+        // Brightness varies per star per frame, so we still need string building,
+        // but using a lookup table of pre-built strings (100 steps) avoids
+        // the full `rgba(255, 235, 120, ${brightness})` template each time.
+        const _YELLOW_LUT = new Array(101);
+        const _AURA_LUT   = new Array(101);
+        for (let k = 0; k <= 100; k++) {
+            const a  = (k / 100).toFixed(2);
+            const a2 = (k / 100 * 0.15).toFixed(3);
+            _YELLOW_LUT[k] = `rgba(255,235,120,${a})`;
+            _AURA_LUT[k]   = `rgba(255,215,0,${a2})`;
+        }
+        function _yellow(b) { return _YELLOW_LUT[Math.round(b * 100)] || _YELLOW_LUT[100]; }
+        function _aura(b)   { return _AURA_LUT[Math.round(b * 100)]   || _AURA_LUT[100]; }
 
         // ── Frame-rate cap (60 fps max) ───────────────────────────────────────
-        // Prevents the render loop from consuming 100 % GPU on high-refresh screens
-        // and draining mobile battery.
-        let _lastFrameTime = 0;
-        const FRAME_BUDGET = 1000 / 60; // ≈16.67 ms
+        let _lastFrameTs = 0;
+        const _FRAME_MS  = 1000 / 60;
 
         function animate(now) {
             requestAnimationFrame(animate);
-            if (now - _lastFrameTime < FRAME_BUDGET) return;
-            _lastFrameTime = now;
+            if (now - _lastFrameTs < _FRAME_MS) return;
+            _lastFrameTs = now;
 
-            ctx.fillStyle = COL_BG;
+            ctx.fillStyle = '#000002';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             const time = (Date.now() - startTime) * 0.001;
             if (globalZOffset > targetZOffset) globalZOffset -= (globalZOffset - targetZOffset) * flyInSpeed;
@@ -1761,63 +1759,57 @@
                 currentYOffset += (0 - currentYOffset) * 0.02;
             }
 
-            const gzo = globalZOffset; // local alias — avoids global lookup each iteration
-            const cxl = cx, cyl = cy;
-            const cw = canvas.width, ch = canvas.height;
+            // Cache loop-invariants as locals for tighter inner loop
+            const gzo  = globalZOffset;
+            const cxl  = cx, cyl = cy;
+            const cw   = canvas.width, ch = canvas.height;
             const xoff = currentXOffset, yoff = currentYOffset;
+            const fi   = focusedStarIndex;
 
             for (let i = 0; i < numStars; i++) {
-                if (i >= 5000 && !starOwned[i] && i !== focusedStarIndex && !isNeighborStar(i)) continue;
+                if (i >= 5000 && !_sOwned[i] && i !== fi && !isNeighborStar(i)) continue;
 
-                const sz = starZ[i];
+                const sz     = _sZ[i];
                 const factor = 800 / (sz + gzo + 1);
-                const sx = cxl + (starX[i] + xoff) * factor;
-                const sy = cyl + (starY[i] + yoff) * factor;
-                starScreenX[i] = sx;
-                starScreenY[i] = sy;
+                const sx     = cxl + (_sX[i] + xoff) * factor;
+                const sy     = cyl + (_sY[i] + yoff) * factor;
+                _sScreenX[i] = sx;
+                _sScreenY[i] = sy;
 
                 if (sx >= 0 && sx <= cw && sy >= 0 && sy <= ch) {
-                    starPhase[i] += starFlicker[i];
-                    const brightness = 0.4 + Math.sin(starPhase[i]) * 0.6;
+                    _sPhase[i] += _sFlicker[i];
+                    const brightness = 0.4 + Math.sin(_sPhase[i]) * 0.6;
                     const baseSize = (1 - (sz + gzo) / 8000) * 2.2;
                     let size = Math.max(0.4, baseSize * (0.7 + brightness * 0.3));
-                    let starColor = rgbaYellow(brightness);
-                    let auraColor = rgbaAuraY(brightness * 0.15);
+                    let starColor = _yellow(brightness);
+                    let auraColor = _aura(brightness);
 
-                    const owned = starOwned[i];
-                    const tier  = starTier[i]; // 0=basic,1=supernova,2=constellation
+                    const owned = _sOwned[i];
+                    const tier  = _sTier[i]; // 0=basic 1=supernova 2=constellation
 
-                    if (owned && focusedStarIndex === i) {
+                    if (owned && fi === i) {
                         if (tier === 0) {
-                            size *= 2.0;
-                            starColor = 'rgba(255,235,120,1)';
+                            size *= 2.0; starColor = 'rgba(255,235,120,1)';
                         } else if (tier === 1) {
                             const pulse = 1.2 + Math.sin(time * 6) * 0.4;
-                            size *= 2.8 * pulse;
-                            starColor = COL_SUPERNOVA;
-                            auraColor = COL_SN_AURA;
+                            size *= 2.8 * pulse; starColor = _COL_SN; auraColor = _COL_SN_AURA;
                         } else {
-                            size *= 3.8;
-                            starColor = COL_CONSTELL;
-                            auraColor = COL_CO_AURA;
+                            size *= 3.8; starColor = _COL_CO; auraColor = _COL_CO_AURA;
                         }
                     } else if (owned) {
-                        size *= 1.4;
-                        starColor = COL_BOUGHT_DIM;
+                        size *= 1.4; starColor = _COL_BUY_DIM;
                     }
 
-                    starSize[i] = size;
+                    _sSize[i] = size;
 
-                    if (focusedStarIndex === i) {
+                    if (fi === i) {
                         if (focusedStarHovered) {
                             size *= 2.4 + Math.sin(time * 10) * 0.3;
                             auraColor = 'rgba(255,215,0,0.9)';
                         }
                         ctx.beginPath();
                         ctx.arc(sx, sy, size * 6 + Math.sin(time * 8) * 4, 0, Math.PI * 2);
-                        ctx.strokeStyle = COL_RING;
-                        ctx.lineWidth = 1.5;
-                        ctx.stroke();
+                        ctx.strokeStyle = _COL_RING; ctx.lineWidth = 1.5; ctx.stroke();
                         ctx.beginPath();
                         ctx.arc(sx, sy, size * 2.8, 0, Math.PI * 2);
                         ctx.fillStyle = auraColor; ctx.fill();
@@ -1839,8 +1831,7 @@
                 for (let i = 0; i < numParticles; i++) {
                     const p = particles[i];
                     p.z -= flySpeed;
-                    if (p.z <= 0) { p.z = 2000; p.x = (Math.random() - 0.5) * 2000;
-                        p.y = (Math.random() - 0.5) * 2000; }
+                    if (p.z <= 0) { p.z = 2000; p.x = (Math.random() - 0.5) * 2000; p.y = (Math.random() - 0.5) * 2000; }
                     const pFactor = 800 / (p.z + 1);
                     const pScreenX = cxl + p.x * pFactor; const pScreenY = cyl + p.y * pFactor;
                     if (pScreenX >= 0 && pScreenX <= cw && pScreenY >= 0 && pScreenY <= ch) {
@@ -2024,10 +2015,11 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             // Find closest purchased or focused star within tap radius
             let closest = null, closestIdx = null, minDist = 1600; // 40px radius²
             for (let i = 0; i < numStars; i++) {
-                if (!starOwned[i] && !isNeighborStar(i)) continue;
-                const dx = tx - starScreenX[i], dy = ty - starScreenY[i];
+                const star = stars[i];
+                if (!star.isBought && !isNeighborStar(i)) continue;
+                const dx = tx - star.screenX, dy = ty - star.screenY;
                 const d = dx*dx + dy*dy;
-                if (d < minDist) { minDist = d; closest = stars[i]; closestIdx = i; }
+                if (d < minDist) { minDist = d; closest = star; closestIdx = i; }
             }
 
             if (closest && closest.isBought) {
