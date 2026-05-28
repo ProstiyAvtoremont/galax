@@ -684,7 +684,7 @@
         .mob-btn .mob-icon { font-size: 18px; line-height: 1; }
         .mob-btn.active-tab { color: #ffd700; }
 
-        /* ── Mobile drawer (slides up from bottom) ── */
+        /* ── Mobile drawer — default slides up from bottom (Info tab) ── */
         #mobile-drawer {
             display: none;
             position: fixed;
@@ -702,6 +702,21 @@
         }
         #mobile-drawer.open {
             transform: translateY(0);
+        }
+        /* Search and Nearby tabs slide in from the left edge */
+        #mobile-drawer.slide-left {
+            right: auto;
+            width: min(80vw, 300px);
+            bottom: 56px;
+            top: 0;
+            max-height: none;
+            border-radius: 0 20px 20px 0;
+            border-top: none;
+            border-right: 1px solid rgba(255, 215, 0, 0.25);
+            transform: translateX(-100%);
+        }
+        #mobile-drawer.slide-left.open {
+            transform: translateX(0);
         }
         .drawer-handle {
             width: 36px; height: 4px;
@@ -1721,6 +1736,10 @@
             congratsOverlay.classList.add('visible');
             document.getElementById('congrats-close-btn').onclick = () => {
                 congratsOverlay.classList.remove('visible');
+                // On mobile: show the purchased star's tooltip after congrats is dismissed
+                if (window.innerWidth <= 600) {
+                    showMobilePurchaseTooltip(starNum);
+                }
             };
         });
 
@@ -1925,6 +1944,13 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
                 return;
             }
+            // Search and Nearby slide in from the left; Info slides up from the bottom
+            const slideLeft = (tab === 'search' || tab === 'stars');
+            if (slideLeft) {
+                drawer.classList.add('slide-left');
+            } else {
+                drawer.classList.remove('slide-left');
+            }
             // Switch tabs
             document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
             const target = document.getElementById('drawer-' + tab);
@@ -1953,6 +1979,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             const drawer = document.getElementById('mobile-drawer');
             if (drawer.classList.contains('open')) {
                 drawer.classList.remove('open');
+                drawer.classList.remove('slide-left');
                 currentDrawerTab = null;
                 document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
             }
@@ -1972,7 +1999,9 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 searchInput.value = idVal;
                 searchBtn.click();
                 // Close drawer
-                document.getElementById('mobile-drawer').classList.remove('open');
+                const drawerEl = document.getElementById('mobile-drawer');
+                drawerEl.classList.remove('open');
+                drawerEl.classList.remove('slide-left');
                 currentDrawerTab = null;
                 document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
             };
@@ -2030,7 +2059,8 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             }
 
             if (closest && closest.isBought) {
-                // Show tooltip for this star
+                // Tapped a star — clear any purchase pin and show this star's tooltip
+                _mobilePinnedStarIdx = null;
                 let label = closest.tier === 'supernova' ? '⚡ Supernova Core'
                           : closest.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star';
                 tooltip.className = closest.tier;
@@ -2046,22 +2076,17 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 tooltip.style.display = 'block';
 
                 // ── Safe-zone positioning for mobile ──────────────────────────
-                // Blocked areas: bottom bar 56px + controls ~60px above it = 116px from bottom.
-                // Tooltip max-height is 260px; we also want a 10px margin from all edges.
                 const tipW   = tooltip.offsetWidth  || 220;
                 const tipH   = tooltip.offsetHeight || 180;
                 const margin = 10;
-                const safeBottom = window.innerHeight - 116 - margin; // top edge of controls area
+                const safeBottom = window.innerHeight - 116 - margin;
                 const safeRight  = window.innerWidth  - margin;
 
-                // Prefer to show above the tap point; fall back to below if not enough room
                 let tipTop = touch.clientY - tipH - margin;
-                if (tipTop < margin) tipTop = touch.clientY + margin; // show below tap instead
-                // Clamp so it never slides under the bottom controls
+                if (tipTop < margin) tipTop = touch.clientY + margin;
                 if (tipTop + tipH > safeBottom) tipTop = safeBottom - tipH;
                 if (tipTop < margin) tipTop = margin;
 
-                // Horizontally centred on tap, clamped to screen
                 let tipLeft = touch.clientX - tipW / 2;
                 if (tipLeft < margin) tipLeft = margin;
                 if (tipLeft + tipW > safeRight) tipLeft = safeRight - tipW;
@@ -2069,8 +2094,66 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 tooltip.style.left = tipLeft + 'px';
                 tooltip.style.top  = tipTop  + 'px';
             } else {
-                tooltip.style.display = 'none';
+                // Tapped empty space — only hide if no purchase tooltip is pinned
+                if (_mobilePinnedStarIdx === null) {
+                    tooltip.style.display = 'none';
+                }
             }
+        }, { passive: true });
+
+        // ── Mobile: show purchased-star tooltip and keep it until tap-other or double-tap ──
+        let _mobilePinnedStarIdx = null; // tracks the star whose tooltip is pinned post-purchase
+
+        function showMobilePurchaseTooltip(starIdx) {
+            const star = stars[starIdx];
+            if (!star) return;
+            _mobilePinnedStarIdx = starIdx;
+
+            let label = star.tier === 'supernova'      ? '⚡ Supernova Core'
+                      : star.tier === 'constellation'  ? '🌌 Constellation' : '⭐ Basic Star';
+            tooltip.className = star.tier;
+            tooltip.innerHTML = `
+                <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${starIdx}</div>
+                <div class="tooltip-type">${label}</div>
+                <div class="tooltip-title">${star.user_name || 'Anonymous'}</div>
+                <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${star.message || ''}"</div>
+                <div style="font-size:11px;color:#ffd700;margin:4px 0;">
+                    Coords: X:${Math.round(star.x)} Y:${Math.round(star.y)} Z:${Math.round(star.z)}
+                </div>
+            `;
+            tooltip.style.display = 'block';
+
+            // Position in the safe zone (above centre of screen, away from bottom bar)
+            const tipW = tooltip.offsetWidth  || 220;
+            const tipH = tooltip.offsetHeight || 180;
+            const margin = 10;
+            const safeBottom = window.innerHeight - 116 - margin;
+            const safeRight  = window.innerWidth  - margin;
+
+            let tipTop  = Math.round(window.innerHeight / 2) - tipH - 20;
+            if (tipTop + tipH > safeBottom) tipTop = safeBottom - tipH;
+            if (tipTop < margin) tipTop = margin;
+
+            let tipLeft = Math.round((window.innerWidth - tipW) / 2);
+            if (tipLeft < margin) tipLeft = margin;
+            if (tipLeft + tipW > safeRight) tipLeft = safeRight - tipW;
+
+            tooltip.style.left = tipLeft + 'px';
+            tooltip.style.top  = tipTop  + 'px';
+        }
+
+        // Double-tap on canvas dismisses the purchase tooltip
+        let _lastTapTime = 0;
+        canvas.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - _lastTapTime < 300) {
+                // Double-tap detected — dismiss pinned tooltip
+                if (_mobilePinnedStarIdx !== null) {
+                    tooltip.style.display = 'none';
+                    _mobilePinnedStarIdx = null;
+                }
+            }
+            _lastTapTime = now;
         }, { passive: true });
 
     </script>
