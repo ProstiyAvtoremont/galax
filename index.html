@@ -1012,26 +1012,36 @@
             // Only clear and rebuild once fetch is done — prevents flicker
             neighborsList.innerHTML = '';
 
-            // Place each non-purchased neighbor star at a random position in the free zone
-            // Uses getFreeZonePoint so stars always land in open sky, never under panels
-            // The random spread works on all screen sizes including mobile
+            // Spread the new neighbor stars across the free sky zone
+            const slots = rangeMax - rangeMin + 1;
+            const freeMargin = 40;
+            const freeLeft = 270 + freeMargin;
+            const freeRight = canvas.width - freeMargin;
+            const freeTop = freeMargin;
+            const freeBottom = canvas.height - 90 - freeMargin;
+            const cols = 4, rows = Math.ceil(slots / 4);
+            const cellW = (freeRight - freeLeft) / cols;
+            const cellH = (freeBottom - freeTop) / Math.max(rows, 1);
+            let slot = 0;
             for (let i = rangeMin; i <= rangeMax; i++) {
-                if (i === centerIndex) continue; // center positioned by search/click
-                const pStar = purchasedMap.get(i);
-                if (pStar) continue; // purchased stars keep their position
-                const fStar = focusWindowMap.get(i) || (() => { const s = makeStar(i); focusWindowMap.set(i, s); return s; })();
-                const { sx, sy } = getFreeZonePoint();
-                fStar.x = (sx - cx) * (fStar.z + 1) / 800;
-                fStar.y = (sy - cy) * (fStar.z + 1) / 800;
+                if (i === centerIndex) { slot++; continue; }
+                if (stars[i].isBought) { slot++; continue; }
+                const col = slot % cols;
+                const row = Math.floor(slot / cols);
+                const sx = freeLeft + cellW * col + cellW * (0.2 + Math.random() * 0.6);
+                const sy = freeTop  + cellH * row + cellH * (0.2 + Math.random() * 0.6);
+                stars[i].x = (sx - cx) * (stars[i].z + 1) / 800;
+                stars[i].y = (sy - cy) * (stars[i].z + 1) / 800;
+                slot++;
             }
 
             for (let i = rangeMin; i <= rangeMax; i++) {
-                const pStar = purchasedMap.get(i);
+                const inMemory = stars[i] && stars[i].isBought;
                 const dbRow = dbMap[i];
-                const isPurchased = !!pStar || !!dbRow;
-                const tier = (dbRow && dbRow.tier) || (pStar && pStar.tier) || 'basic';
-                const userName = (dbRow && dbRow.user_name) || (pStar && pStar.user_name) || '';
-                const msg = (dbRow && dbRow.message) || (pStar && pStar.message) || '';
+                const isPurchased = inMemory || !!dbRow;
+                const tier = (dbRow && dbRow.tier) || (inMemory && stars[i].tier) || 'basic';
+                const userName = (dbRow && dbRow.user_name) || (inMemory && stars[i].user_name) || '';
+                const msg = (dbRow && dbRow.message) || (inMemory && stars[i].message) || '';
                 const isCenter = (i === centerIndex);
 
                 const item = document.createElement('div');
@@ -1161,21 +1171,21 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Returns a random {sx, sy} in open sky — avoids panels on all screen sizes
+        // Returns a random {sx, sy} guaranteed to fall in the open sky area —
+        // away from the left-side panels (search + promo + neighbors) and the bottom bar.
         function getFreeZonePoint() {
+            // Left panel column: ~260px wide, full height
+            // Bottom bar: ~80px tall
+            // Small margin so the star isn't flush against a panel edge
             const margin = 40;
-            const isMobile = canvas.width <= 600;
-            // Mobile: panels are at bottom (~140px); no left column
-            // Desktop: left column ~270px; bottom bar ~90px
-            const leftBlocked   = isMobile ? margin : 270 + margin;
-            const bottomBlocked = isMobile ? 150    : 90;
-            const minX = leftBlocked;
+            const leftBlocked = 270;   // width of left-side UI column
+            const bottomBlocked = 90;  // height of bottom controls bar
+            const minX = leftBlocked + margin;
             const maxX = canvas.width  - margin;
             const minY = margin;
             const maxY = canvas.height - bottomBlocked - margin;
-            // Ensure valid range even on very small screens
-            const sx = minX + Math.random() * Math.max(1, maxX - minX);
-            const sy = minY + Math.random() * Math.max(1, maxY - minY);
+            const sx = minX + Math.random() * (maxX - minX);
+            const sy = minY + Math.random() * (maxY - minY);
             return { sx, sy };
         }
 
@@ -1220,21 +1230,21 @@
             startTime = Date.now();
             animate();
 
-            // Check for shared star link: ?star=N
+            // Auto-open neighbors panel on launch (show stars around #0)
+            setTimeout(() => updateNeighborsPanel(0), 400);
+
+            // Auto-open star from shared link: ?star=N
             const urlParams = new URLSearchParams(window.location.search);
             const starParam = urlParams.get('star');
-            const sharedStarId = (starParam !== null) ? parseInt(starParam) : null;
-            const hasSharedStar = (sharedStarId !== null && !isNaN(sharedStarId) && sharedStarId >= 0 && sharedStarId < numStars);
-
-            if (hasSharedStar) {
-                // Open directly to the shared star — skip the default panel(0)
-                setTimeout(() => {
-                    searchInput.value = sharedStarId;
-                    searchBtn.click();
-                }, 500);
-            } else {
-                // Normal launch: open neighbors panel around #0
-                setTimeout(() => updateNeighborsPanel(0), 400);
+            if (starParam !== null) {
+                const idVal = parseInt(starParam);
+                if (!isNaN(idVal) && idVal >= 0 && idVal < numStars) {
+                    // Small delay so the canvas has rendered at least one frame
+                    setTimeout(() => {
+                        searchInput.value = idVal;
+                        searchBtn.click();
+                    }, 300);
+                }
             }
         }
         initSupabaseAndStart();
@@ -1903,57 +1913,38 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
         }
 
         // Touch tap on canvas: show tooltip for nearby purchased star (like hover on desktop)
-        // Double-tap detection for mobile: return to main galaxy view
-        let lastTapTime = 0;
-
         canvas.addEventListener('touchend', (e) => {
             if (e.changedTouches.length === 0) return;
             const touch = e.changedTouches[0];
-            const now = Date.now();
-
-            // Double-tap: two taps within 300ms → return to main screen
-            if (now - lastTapTime < 300) {
-                clearPreviousNeighbors(previousFocusedIndex);
-                focusedStarIndex = null;
-                previousFocusedIndex = null;
-                pinnedStarIndex = null;
-                tooltip.style.display = 'none';
-                updateNeighborsPanel(null);
-                lastTapTime = 0;
-                return;
-            }
-            lastTapTime = now;
-
             const rect  = canvas.getBoundingClientRect();
             const tx = touch.clientX - rect.left;
             const ty = touch.clientY - rect.top;
 
-            // Find closest purchased or focused star within 40px tap radius
-            let closest = null, closestIdx = null, minDist = 1600;
-            for (const [i, star] of purchasedMap) {
-                const dx = tx - star.screenX, dy = ty - star.screenY;
-                const d = dx*dx + dy*dy;
-                if (d < minDist) { minDist = d; closest = star; closestIdx = i; }
-            }
-            for (const [i, star] of focusWindowMap) {
+            // Find closest purchased or focused star within tap radius
+            let closest = null, closestIdx = null, minDist = 1600; // 40px radius²
+            for (let i = 0; i < numStars; i++) {
+                const star = stars[i];
+                if (!star.isBought && !isNeighborStar(i)) continue;
                 const dx = tx - star.screenX, dy = ty - star.screenY;
                 const d = dx*dx + dy*dy;
                 if (d < minDist) { minDist = d; closest = star; closestIdx = i; }
             }
 
             if (closest && closest.isBought) {
+                // Show tooltip for this star
                 let label = closest.tier === 'supernova' ? '⚡ Supernova Core'
                           : closest.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star';
                 tooltip.className = closest.tier;
                 tooltip.innerHTML = `
                     <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${closestIdx}</div>
                     <div class="tooltip-type">${label}</div>
-                    <div class="tooltip-title">${sanitize(closest.user_name || 'Anonymous')}</div>
-                    <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${sanitize(closest.message || '')}"</div>
+                    <div class="tooltip-title">${closest.user_name || 'Anonymous'}</div>
+                    <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${closest.message || ''}"</div>
                     <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                         Coords: X:${Math.round(closest.x)} Y:${Math.round(closest.y)} Z:${Math.round(closest.z)}
                     </div>
                 `;
+                // Position tooltip above the tap point
                 const tipLeft = Math.min(touch.clientX - 110, window.innerWidth - 310);
                 tooltip.style.left = Math.max(10, tipLeft) + 'px';
                 tooltip.style.top  = Math.max(10, touch.clientY - 180) + 'px';
