@@ -440,6 +440,63 @@
             text-align: center;
             letter-spacing: 1px;
         }
+        /* Mobile close button inside info overlay (hidden on desktop) */
+        .info-overlay-close-btn {
+            display: none;
+        }
+        @media (max-width: 600px) {
+            #info-overlay {
+                /* On mobile: block layout so inner card can scroll naturally */
+                display: none;
+                align-items: flex-start;
+                cursor: default;
+            }
+            #info-overlay.visible {
+                display: block;
+            }
+            .info-overlay-inner {
+                /* Allow touch interaction for scrolling and close button */
+                pointer-events: auto;
+                width: calc(100% - 32px);
+                margin: 16px auto 32px;
+                padding: 24px 20px 28px;
+                border-radius: 20px;
+                box-sizing: border-box;
+                position: relative;
+            }
+            .info-overlay-text {
+                font-size: 14px;
+                line-height: 1.75;
+                /* Ensure long text wraps properly */
+                white-space: pre-wrap;
+                word-break: break-word;
+                overflow-wrap: break-word;
+            }
+            .info-overlay-hint {
+                /* Hide "click anywhere" hint on mobile — replaced by close button */
+                display: none;
+            }
+            /* Mobile close button */
+            .info-overlay-close-btn {
+                display: block;
+                width: 100%;
+                margin-top: 28px;
+                padding: 13px 0;
+                background: rgba(255, 215, 0, 0.08);
+                border: 1px solid rgba(255, 215, 0, 0.35);
+                border-radius: 20px;
+                color: #ffd700;
+                font-size: 13px;
+                font-weight: bold;
+                letter-spacing: 1px;
+                cursor: pointer;
+                text-transform: uppercase;
+                transition: background 0.2s;
+            }
+            .info-overlay-close-btn:active {
+                background: rgba(255, 215, 0, 0.22);
+            }
+        }
         /* Congratulations Overlay */
         #congrats-overlay {
             display: none;
@@ -605,9 +662,7 @@
             .share-btn { font-size: 11px; padding: 6px 10px; }
             .congrats-close-btn { padding: 9px 20px; font-size: 12px; }
 
-            /* Info overlay */
-            .info-overlay-inner { padding: 24px 16px; margin: 16px auto; }
-            .info-overlay-text  { font-size: 13px; }
+            /* Info overlay — mobile styles handled in dedicated @media block above */
 
             /* Tooltip constrained to safe zone — positioning handled by JS */
             #star-tooltip {
@@ -893,6 +948,7 @@
             <div class="info-overlay-label" id="info-overlay-label"></div>
             <div class="info-overlay-text" id="info-overlay-text"></div>
             <div class="info-overlay-hint">✦ click anywhere to close</div>
+            <button class="info-overlay-close-btn" id="info-overlay-close-btn">✕ Close</button>
         </div>
     </div>
 
@@ -1919,9 +1975,20 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             infoLabel.textContent = content.label;
             infoText.textContent  = content.text;
             infoOverlay.classList.add('visible');
+            // Scroll to top each time a new section is opened on mobile
+            infoOverlay.scrollTop = 0;
         }
 
-        infoOverlay.addEventListener('click', () => {
+        infoOverlay.addEventListener('click', (e) => {
+            // On desktop: clicking the backdrop (not the inner card) closes the overlay
+            if (e.target === infoOverlay) {
+                infoOverlay.classList.remove('visible');
+            }
+        });
+
+        // Mobile close button
+        document.getElementById('info-overlay-close-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
             infoOverlay.classList.remove('visible');
         });
 
