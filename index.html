@@ -894,8 +894,7 @@
 
         <!-- Nearby stars tab -->
         <div class="drawer-tab" id="drawer-stars">
-            <div id="mob-neighbors-title" style="font-size:11px;color:#ffd700;font-weight:bold;text-transform:uppercase;letter-spacing:1px;padding:4px 0 4px;"></div>
-            <div style="font-size:10px;color:rgba(255,215,0,0.4);letter-spacing:0.5px;padding:0 0 8px;">Double-tap a free star to purchase it</div>
+            <div id="mob-neighbors-title" style="font-size:11px;color:#ffd700;font-weight:bold;text-transform:uppercase;letter-spacing:1px;padding:4px 0 8px;"></div>
             <div id="mob-neighbors-list"></div>
         </div>
 
@@ -1953,7 +1952,11 @@ After selecting a star number, you'll need to enter the owner's information, nam
 
 Next, you can leave a message for the universe, a message for the people who will be your allies and companions in this galactic space. Perhaps it's a wise saying, a link to your social media profile, or simply a message addressed to someone else. The choice is yours.
 
-After that, click the payment button, and after the payment is completed, you will become the owner of your star and receive digital immortality. All payments are accepted in DOGE coin. We're doing this to support the DOGE community.`
+After that, click the payment button, and after the payment is completed, you will become the owner of your star and receive digital immortality. All payments are accepted in DOGE coin. We're doing this to support the DOGE community.
+
+We respect and understand your anonymity, so please be sure to save the link to your star or write down the number of the star you purchased somewhere convenient. You can also share this link on social media or instant messaging apps, where you can always find this information for reference.
+
+If necessary, you can always contact us via DM on Twitter: @DOGEStarSpace.`
             },
             tos: {
                 label: '✦ Terms of Service',
@@ -2088,38 +2091,12 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             // Clone the list items so tap handlers are preserved via event delegation
             mobList.innerHTML = desktopList.innerHTML;
 
-            // Re-attach interactions on cloned items
+            // Re-attach click/dblclick on cloned items by delegating to star index
             mobList.querySelectorAll('.neighbor-item').forEach((item, idx) => {
                 const origItem = desktopList.querySelectorAll('.neighbor-item')[idx];
                 if (!origItem) return;
-
-                // Single tap → delegate to desktop click (focus star, show tooltip)
                 item.addEventListener('click', () => origItem.click());
-
-                // Double-tap → open purchase modal for free (available) stars only.
-                // dblclick never fires on touch devices; we detect two taps within 350 ms.
-                const isFree = !item.classList.contains('is-purchased');
-                if (isFree) {
-                    let _lastTap = 0;
-                    item.addEventListener('touchend', (e) => {
-                        const now = Date.now();
-                        if (now - _lastTap < 350) {
-                            // Double-tap confirmed — trigger the desktop dblclick handler
-                            e.preventDefault();
-                            e.stopPropagation();
-                            origItem.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
-                            // Close the drawer so the purchase modal is fully visible
-                            const drawer = document.getElementById('mobile-drawer');
-                            drawer.classList.remove('open');
-                            drawer.classList.remove('slide-left');
-                            currentDrawerTab = null;
-                            document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
-                            _lastTap = 0;
-                        } else {
-                            _lastTap = now;
-                        }
-                    }, { passive: false });
-                }
+                item.addEventListener('dblclick', () => origItem.dblclick());
             });
         }
 
