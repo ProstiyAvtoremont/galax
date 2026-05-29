@@ -985,7 +985,11 @@
             <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="80">
         </div>
 
-        <button class="pay-btn" id="pay-btn">Proceed to Payment</button>
+        <p style="font-size:12px; color:rgba(255,255,255,0.6); margin:14px 0 0; text-align:center; line-height:1.5;">
+            Any questions? Contact us at <a href="https://x.com/DOGEStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DOGEStarSpace</a>
+        </p>
+
+        <button class="pay-btn" id="pay-btn">Proceed to Web3 Payment</button>
     </div>
 
     <script>
@@ -2096,7 +2100,40 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 const origItem = desktopList.querySelectorAll('.neighbor-item')[idx];
                 if (!origItem) return;
                 item.addEventListener('click', () => origItem.click());
-                item.addEventListener('dblclick', () => origItem.dblclick());
+
+                // Double-tap on a free star in the mobile list opens the purchase window
+                const isFree = item.querySelector('.neighbor-name.free') !== null;
+                if (isFree) {
+                    item.addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        // Determine star index from the neighbor-num label (e.g. "#42 ◀" → 42)
+                        const numEl = item.querySelector('.neighbor-num');
+                        const starIdx = numEl ? parseInt(numEl.textContent.replace(/\D/g, '')) : NaN;
+                        if (isNaN(starIdx) || starIdx < 0 || starIdx >= numStars) {
+                            origItem.dblclick(); // fallback
+                            return;
+                        }
+                        // Close the mobile drawer
+                        const drawerEl = document.getElementById('mobile-drawer');
+                        drawerEl.classList.remove('open');
+                        drawerEl.classList.remove('slide-left');
+                        currentDrawerTab = null;
+                        document.querySelectorAll('.mob-btn').forEach(b => b.classList.remove('active-tab'));
+                        // Open the purchase modal for this star
+                        const tStar = stars[starIdx];
+                        activeClickedStarNumber = starIdx;
+                        focusedStarIndex = starIdx;
+                        const { sx: rScreenX, sy: rScreenY } = getFreeZonePoint();
+                        tStar.x = (rScreenX - cx) * (tStar.z + 1) / 800;
+                        tStar.y = (rScreenY - cy) * (tStar.z + 1) / 800;
+                        document.getElementById('modal-title').innerText = `Claim Star #${starIdx} (${Math.round(tStar.x)}, ${Math.round(tStar.y)})`;
+                        modal.style.display = 'block';
+                        refreshPayBtnState();
+                        setTimeout(() => modal.classList.add('active'), 10);
+                    });
+                } else {
+                    item.addEventListener('dblclick', () => origItem.dblclick());
+                }
             });
         }
 
