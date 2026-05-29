@@ -1375,21 +1375,24 @@
             startTime = Date.now();
             requestAnimationFrame(animate);
 
-            // Auto-open neighbors panel on launch (show stars around #0)
-            setTimeout(() => updateNeighborsPanel(0), 400);
-
             // Auto-open star from shared link: ?star=N
             const urlParams = new URLSearchParams(window.location.search);
             const starParam = urlParams.get('star');
-            if (starParam !== null) {
-                const idVal = parseInt(starParam);
-                if (!isNaN(idVal) && idVal >= 0 && idVal < numStars) {
-                    // Small delay so the canvas has rendered at least one frame
-                    setTimeout(() => {
-                        searchInput.value = idVal;
-                        searchBtn.click();
-                    }, 300);
-                }
+            const urlStarId = (starParam !== null) ? parseInt(starParam) : NaN;
+            const hasUrlStar = !isNaN(urlStarId) && urlStarId >= 0 && urlStarId < numStars;
+
+            if (hasUrlStar) {
+                // Delay so the canvas has rendered at least one frame,
+                // then navigate to the star AND populate neighbors panel + mobile drawer
+                setTimeout(() => {
+                    searchInput.value = urlStarId;
+                    searchBtn.click();
+                    // After the search triggers updateNeighborsPanel, also sync the mobile drawer
+                    setTimeout(() => syncMobNeighbours(), 600);
+                }, 300);
+            } else {
+                // No URL star — show neighbours around star #0 by default
+                setTimeout(() => updateNeighborsPanel(0), 400);
             }
         }
         initSupabaseAndStart();
@@ -1505,14 +1508,25 @@
                     if (top < 10) top = 10;
                     tooltip.style.left = `${left}px`;
                     tooltip.style.top = `${top}px`;
+                    // Pin this tooltip so it stays visible
+                    pinnedStarIndex = idVal;
+                    pinnedTooltipHTML = tooltip.innerHTML;
                 }, 400);
             } else {
-                if (confirm(`Star #${idVal} [X:${Math.round(targetStar.x)}, Y:${Math.round(targetStar.y)}, Z:${Math.round(targetStar.z)}] is FREE! Would you like to buy it right now?`)) {
-                    activeClickedStarNumber = idVal;
-                    document.getElementById('modal-title').innerText = `Claim Star #${idVal} (${Math.round(targetStar.x)}, ${Math.round(targetStar.y)})`;
-                    modal.style.display = 'block';
-                    refreshPayBtnState();
-                    setTimeout(() => modal.classList.add('active'), 10);
+                // Only show the buy-prompt when triggered by a real user search,
+                // not during the silent URL-param auto-search on page load.
+                // We detect the auto-search by checking if the value was set programmatically
+                // (the input doesn't have focus) vs. user-typed.
+                const isAutoSearch = document.activeElement !== searchInput &&
+                                     document.activeElement !== document.getElementById('mob-search-input');
+                if (!isAutoSearch) {
+                    if (confirm(`Star #${idVal} [X:${Math.round(targetStar.x)}, Y:${Math.round(targetStar.y)}, Z:${Math.round(targetStar.z)}] is FREE! Would you like to buy it right now?`)) {
+                        activeClickedStarNumber = idVal;
+                        document.getElementById('modal-title').innerText = `Claim Star #${idVal} (${Math.round(targetStar.x)}, ${Math.round(targetStar.y)})`;
+                        modal.style.display = 'block';
+                        refreshPayBtnState();
+                        setTimeout(() => modal.classList.add('active'), 10);
+                    }
                 }
             }
         });
