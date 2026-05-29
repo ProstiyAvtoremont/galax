@@ -1763,7 +1763,7 @@
             // Show congratulations overlay
             const starNum  = activeClickedStarNumber;
             const starObj  = stars[starNum];
-            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}&coord=${starNum}`;
+            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
             const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
 
             document.getElementById('congrats-title').textContent =
