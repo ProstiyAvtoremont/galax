@@ -1670,7 +1670,7 @@
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
             payBtn.disabled = false;
-            payBtn.innerText = 'Proceed to Web3 Payment';
+            payBtn.innerText = 'Proceed to Payment';
             payBtn.style.background = '';
             payBtn.style.color = '';
         });
@@ -1702,7 +1702,7 @@
                 payBtn.style.color = '#aaa';
             } else {
                 payBtn.disabled = false;
-                payBtn.innerText = 'Proceed to Web3 Payment';
+                payBtn.innerText = 'Proceed to Payment';
                 payBtn.style.background = '';
                 payBtn.style.color = '';
             }
@@ -1760,7 +1760,7 @@
                         console.error("Supabase insert error:", error.message);
                         alert(`⚠️ Database save failed: ${error.message}`);
                         payBtn.disabled = false;
-                        payBtn.innerText = 'Proceed to Web3 Payment';
+                        payBtn.innerText = 'Proceed to Payment';
                         payBtn.style.background = '';
                         payBtn.style.color = '';
                         return;
@@ -1783,7 +1783,7 @@
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
             payBtn.disabled = false;
-            payBtn.innerText = "Proceed to Web3 Payment";
+            payBtn.innerText = "Proceed to Payment";
 
             // Show congratulations overlay
             const starNum  = activeClickedStarNumber;
