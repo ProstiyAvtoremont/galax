@@ -1707,7 +1707,49 @@
                 payBtn.style.color = '';
             }
         }
+function showCongratsOverlay(starNum) {
+    const starObj  = stars[starNum];
+    const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
+    const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
 
+    document.getElementById('congrats-title').textContent =
+        `Congratulations on purchasing star #${starNum} in this digital galaxy.`;
+    document.getElementById('congrats-link').textContent = starLink;
+
+    document.getElementById('congrats-copy-btn').onclick = () => {
+        navigator.clipboard.writeText(starLink).then(() => {
+            const btn = document.getElementById('congrats-copy-btn');
+            btn.textContent = 'COPIED!';
+            setTimeout(() => btn.textContent = 'COPY', 2000);
+        });
+    };
+
+    document.getElementById('share-twitter').href =
+        `https://twitter.com/intent/tweet?text=${shareMsg}`;
+    document.getElementById('share-facebook').href =
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(starLink)}`;
+    document.getElementById('share-instagram').onclick = () => {
+        navigator.clipboard.writeText(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
+        const btn = document.getElementById('share-instagram');
+        btn.textContent = 'Copied! Paste in Instagram';
+        setTimeout(() => btn.textContent = 'Instagram', 3000);
+    };
+    document.getElementById('share-whatsapp').href =
+        `https://wa.me/?text=${shareMsg}`;
+    document.getElementById('share-telegram').href =
+        `https://t.me/share/url?url=${encodeURIComponent(starLink)}&text=${encodeURIComponent('I bought my own star in the digital galaxy!')}`;
+    document.getElementById('share-viber').href =
+        `viber://forward?text=${shareMsg}`;
+
+    const congratsOverlay = document.getElementById('congrats-overlay');
+    congratsOverlay.classList.add('visible');
+    document.getElementById('congrats-close-btn').onclick = () => {
+        congratsOverlay.classList.remove('visible');
+        if (window.innerWidth <= 600) {
+            showMobilePurchaseTooltip(starNum);
+        }
+    };
+}
         payBtn.addEventListener('click', async () => {
     const userNameVal = ownerInput.value.trim() || "Anonymous";
     const msgVal = msgInput.value.trim() || "To the moon! 🚀";
