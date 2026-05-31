@@ -1709,98 +1709,101 @@
         }
 
         payBtn.addEventListener('click', async () => {
-            const userNameVal = ownerInput.value.trim() || "Anonymous";
-            const msgVal = msgInput.value.trim() || "To the moon! 🚀";
-            let userWalletAddress = "0xManualDogeTransferPayment";
+    const userNameVal = ownerInput.value.trim() || "Anonymous";
+    const msgVal = msgInput.value.trim() || "To the moon! 🚀";
 
-            payBtn.disabled = true;
-            payBtn.innerText = "Checking availability...";
+    payBtn.disabled = true;
+    payBtn.innerText = "Checking availability...";
 
-            // Live availability check right before payment
-            const stillFree = await checkStarAvailability(activeClickedStarNumber);
-            if (!stillFree) {
-                payBtn.innerText = '⛔ Star Already Purchased';
-                payBtn.style.background = '#555';
-                payBtn.style.color = '#aaa';
-                // Mark locally so UI updates
-                stars[activeClickedStarNumber].isBought = true;
-                alert(`⚠️ Star #${activeClickedStarNumber} was just purchased by someone else. Please reload the page and choose a different star.`);
-                return;
-            }
+    const stillFree = await checkStarAvailability(activeClickedStarNumber);
+    if (!stillFree) {
+        payBtn.innerText = '⛔ Star Already Purchased';
+        payBtn.style.background = '#555';
+        payBtn.style.color = '#aaa';
+        stars[activeClickedStarNumber].isBought = true;
+        alert(`⚠️ Star #${activeClickedStarNumber} was just purchased by someone else. Please choose a different star.`);
+        return;
+    }
 
-            payBtn.innerText = "Connecting Wallet...";
+    payBtn.innerText = "Creating payment...";
 
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    if (accounts && accounts[0]) { userWalletAddress = accounts[0]; }
-                    await window.ethereum.request({
-                        method: 'eth_sendTransaction',
-                        params: [{ to: MERCHANT_WALLET, from: accounts, value: '0x0' }],
-                    });
-                } catch (e) { console.log("Wallet link bypassed."); }
-            }
+    let invoiceUrl, orderNumber;
+    try {
+        const resp = await fetch('https://create-plisio-invoice.YOURSUBDOMAIN.workers.dev', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                starNumber: activeClickedStarNumber,
+                tier: selectedTier,
+                amount: selectedPriceDoge,
+                userName: userNameVal,
+                message: msgVal,
+            })
+        });
+        const data = await resp.json();
+        if (!data.invoiceUrl) throw new Error(data.error || 'No invoice URL returned');
+        invoiceUrl = data.invoiceUrl;
+        orderNumber = data.orderNumber;
+    } catch (err) {
+        payBtn.disabled = false;
+        payBtn.innerText = 'Proceed to Payment';
+        alert('Could not create payment: ' + err.message);
+        return;
+    }
 
-            payBtn.innerText = "Saving to Space Grid...";
-            try {
-                if (db) {
-                    const { error } = await db.from('purchased_stars').insert([
-                        { star_number: activeClickedStarNumber, user_name: userNameVal, wallet_address: userWalletAddress, tier: selectedTier, message: msgVal }
-                    ]);
-                    if (error) {
-                        // Duplicate key = someone else got it first during payment flow
-                        if (error.message && error.message.includes('duplicate key')) {
-                            stars[activeClickedStarNumber].isBought = true;
-                            payBtn.innerText = '⛔ Star Already Purchased';
-                            payBtn.style.background = '#555';
-                            payBtn.style.color = '#aaa';
-                            alert(`⚠️ Star #${activeClickedStarNumber} was purchased by someone else while you were completing payment. Please reload and choose a different star.`);
-                            return;
-                        }
-                        console.error("Supabase insert error:", error.message);
-                        alert(`⚠️ Database save failed: ${error.message}`);
-                        payBtn.disabled = false;
-                        payBtn.innerText = 'Proceed to Payment';
-                        payBtn.style.background = '';
-                        payBtn.style.color = '';
-                        return;
-                    }
-                }
-            } catch (err) { console.error("Database sync issue:", err.message); }
+    // Open Plisio payment window
+    const payWin = window.open(invoiceUrl, 'plisio_payment',
+        'width=520,height=700,scrollbars=yes,resizable=yes');
 
-            stars[activeClickedStarNumber].isBought = true;
-            stars[activeClickedStarNumber].user_name = userNameVal;
-            stars[activeClickedStarNumber].wallet_address = userWalletAddress;
-            stars[activeClickedStarNumber].tier = selectedTier;
-            stars[activeClickedStarNumber].message = msgVal;
+    payBtn.innerText = "Waiting for payment...";
 
-            // Force the neighbors panel to refresh so the purchased star appears immediately
+    // Store context so we can show congrats after confirmation
+    const pendingStarNumber = activeClickedStarNumber;
+    const pendingUserName = userNameVal;
+    const pendingMsg = msgVal;
+    const pendingTier = selectedTier;
+
+    // Poll every 2 seconds to check if the webhook has confirmed the payment
+    const pollTimer = setInterval(async () => {
+        // Check if the star has been saved to the DB (webhook fired)
+        const isNowPurchased = !(await checkStarAvailability(pendingStarNumber));
+
+        if (isNowPurchased) {
+            clearInterval(pollTimer);
+            if (payWin && !payWin.closed) payWin.close();
+
+            // Update local star state
+            stars[pendingStarNumber].isBought = true;
+            stars[pendingStarNumber].user_name = pendingUserName;
+            stars[pendingStarNumber].tier = pendingTier;
+            stars[pendingStarNumber].message = pendingMsg;
+
             lastNeighborsFocus = null;
-            updateNeighborsPanel(activeClickedStarNumber);
+            updateNeighborsPanel(pendingStarNumber);
 
-            // Close purchase modal
-            ownerInput.value = ""; msgInput.value = "";
+            ownerInput.value = "";
+            msgInput.value = "";
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
             payBtn.disabled = false;
             payBtn.innerText = "Proceed to Payment";
+            payBtn.style.background = '';
+            payBtn.style.color = '';
 
-            // Show congratulations overlay
-            const starNum  = activeClickedStarNumber;
-            const starObj  = stars[starNum];
-            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
-            const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
+            showCongratsOverlay(pendingStarNumber);
+            return;
+        }
 
-            document.getElementById('congrats-title').textContent =
-                `Congratulations on purchasing star #${starNum} in this digital galaxy.`;
-            document.getElementById('congrats-link').textContent = starLink;
-
-            document.getElementById('congrats-copy-btn').onclick = () => {
-                navigator.clipboard.writeText(starLink).then(() => {
-                    const btn = document.getElementById('congrats-copy-btn');
-                    btn.textContent = 'COPIED!';
-                    setTimeout(() => btn.textContent = 'COPY', 2000);
-                });
+        // If the payment window was closed by the user without paying
+        if (payWin && payWin.closed) {
+            clearInterval(pollTimer);
+            payBtn.disabled = false;
+            payBtn.innerText = 'Proceed to Payment';
+            payBtn.style.background = '';
+            payBtn.style.color = '';
+        }
+    }, 2000);
+});
             };
 
             document.getElementById('share-twitter').href =
