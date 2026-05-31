@@ -1707,145 +1707,20 @@
                 payBtn.style.color = '';
             }
         }
-function showCongratsOverlay(starNum) {
-    const starObj  = stars[starNum];
-    const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
-    const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
+        function showCongratsOverlay(starNum) {
+            const starLink = `${window.location.href.split('?')[0]}?star=${starNum}`;
+            const shareMsg = encodeURIComponent(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
 
-    document.getElementById('congrats-title').textContent =
-        `Congratulations on purchasing star #${starNum} in this digital galaxy.`;
-    document.getElementById('congrats-link').textContent = starLink;
+            document.getElementById('congrats-title').textContent =
+                `Congratulations on purchasing star #${starNum} in this digital galaxy.`;
+            document.getElementById('congrats-link').textContent = starLink;
 
-    document.getElementById('congrats-copy-btn').onclick = () => {
-        navigator.clipboard.writeText(starLink).then(() => {
-            const btn = document.getElementById('congrats-copy-btn');
-            btn.textContent = 'COPIED!';
-            setTimeout(() => btn.textContent = 'COPY', 2000);
-        });
-    };
-
-    document.getElementById('share-twitter').href =
-        `https://twitter.com/intent/tweet?text=${shareMsg}`;
-    document.getElementById('share-facebook').href =
-        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(starLink)}`;
-    document.getElementById('share-instagram').onclick = () => {
-        navigator.clipboard.writeText(`I bought my own star in the digital galaxy! Look at it: ${starLink}`);
-        const btn = document.getElementById('share-instagram');
-        btn.textContent = 'Copied! Paste in Instagram';
-        setTimeout(() => btn.textContent = 'Instagram', 3000);
-    };
-    document.getElementById('share-whatsapp').href =
-        `https://wa.me/?text=${shareMsg}`;
-    document.getElementById('share-telegram').href =
-        `https://t.me/share/url?url=${encodeURIComponent(starLink)}&text=${encodeURIComponent('I bought my own star in the digital galaxy!')}`;
-    document.getElementById('share-viber').href =
-        `viber://forward?text=${shareMsg}`;
-
-    const congratsOverlay = document.getElementById('congrats-overlay');
-    congratsOverlay.classList.add('visible');
-    document.getElementById('congrats-close-btn').onclick = () => {
-        congratsOverlay.classList.remove('visible');
-        if (window.innerWidth <= 600) {
-            showMobilePurchaseTooltip(starNum);
-        }
-    };
-}
-        payBtn.addEventListener('click', async () => {
-    const userNameVal = ownerInput.value.trim() || "Anonymous";
-    const msgVal = msgInput.value.trim() || "To the moon! 🚀";
-
-    payBtn.disabled = true;
-    payBtn.innerText = "Checking availability...";
-
-    const stillFree = await checkStarAvailability(activeClickedStarNumber);
-    if (!stillFree) {
-        payBtn.innerText = '⛔ Star Already Purchased';
-        payBtn.style.background = '#555';
-        payBtn.style.color = '#aaa';
-        stars[activeClickedStarNumber].isBought = true;
-        alert(`⚠️ Star #${activeClickedStarNumber} was just purchased by someone else. Please choose a different star.`);
-        return;
-    }
-
-    payBtn.innerText = "Creating payment...";
-
-    let invoiceUrl, orderNumber;
-    try {
-        const resp = await fetch('https://create-plisio-invoice.YOURSUBDOMAIN.workers.dev', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                starNumber: activeClickedStarNumber,
-                tier: selectedTier,
-                amount: selectedPriceDoge,
-                userName: userNameVal,
-                message: msgVal,
-            })
-        });
-        const data = await resp.json();
-        if (!data.invoiceUrl) throw new Error(data.error || 'No invoice URL returned');
-        invoiceUrl = data.invoiceUrl;
-        orderNumber = data.orderNumber;
-    } catch (err) {
-        payBtn.disabled = false;
-        payBtn.innerText = 'Proceed to Payment';
-        alert('Could not create payment: ' + err.message);
-        return;
-    }
-
-    // Open Plisio payment window
-    const payWin = window.open(invoiceUrl, 'plisio_payment',
-        'width=520,height=700,scrollbars=yes,resizable=yes');
-
-    payBtn.innerText = "Waiting for payment...";
-
-    // Store context so we can show congrats after confirmation
-    const pendingStarNumber = activeClickedStarNumber;
-    const pendingUserName = userNameVal;
-    const pendingMsg = msgVal;
-    const pendingTier = selectedTier;
-
-    // Poll every 2 seconds to check if the webhook has confirmed the payment
-    const pollTimer = setInterval(async () => {
-        // Check if the star has been saved to the DB (webhook fired)
-        const isNowPurchased = !(await checkStarAvailability(pendingStarNumber));
-
-        if (isNowPurchased) {
-            clearInterval(pollTimer);
-            if (payWin && !payWin.closed) payWin.close();
-
-            // Update local star state
-            stars[pendingStarNumber].isBought = true;
-            stars[pendingStarNumber].user_name = pendingUserName;
-            stars[pendingStarNumber].tier = pendingTier;
-            stars[pendingStarNumber].message = pendingMsg;
-
-            lastNeighborsFocus = null;
-            updateNeighborsPanel(pendingStarNumber);
-
-            ownerInput.value = "";
-            msgInput.value = "";
-            modal.classList.remove('active');
-            setTimeout(() => modal.style.display = 'none', 300);
-            payBtn.disabled = false;
-            payBtn.innerText = "Proceed to Payment";
-            payBtn.style.background = '';
-            payBtn.style.color = '';
-
-            showCongratsOverlay(pendingStarNumber);
-            return;
-        }
-
-        // If the payment window was closed by the user without paying
-        if (payWin && payWin.closed) {
-            clearInterval(pollTimer);
-            payBtn.disabled = false;
-            payBtn.innerText = 'Proceed to Payment';
-            payBtn.style.background = '';
-            payBtn.style.color = '';
-        }
-    }, 2000);
-});
+            document.getElementById('congrats-copy-btn').onclick = () => {
+                navigator.clipboard.writeText(starLink).then(() => {
+                    const btn = document.getElementById('congrats-copy-btn');
+                    btn.textContent = 'COPIED!';
+                    setTimeout(() => btn.textContent = 'COPY', 2000);
+                });
             };
 
             document.getElementById('share-twitter').href =
@@ -1869,11 +1744,106 @@ function showCongratsOverlay(starNum) {
             congratsOverlay.classList.add('visible');
             document.getElementById('congrats-close-btn').onclick = () => {
                 congratsOverlay.classList.remove('visible');
-                // On mobile: show the purchased star's tooltip after congrats is dismissed
                 if (window.innerWidth <= 600) {
                     showMobilePurchaseTooltip(starNum);
                 }
             };
+        }
+
+        payBtn.addEventListener('click', async () => {
+            const userNameVal = ownerInput.value.trim() || "Anonymous";
+            const msgVal = msgInput.value.trim() || "To the moon! 🚀";
+
+            payBtn.disabled = true;
+            payBtn.innerText = "Checking availability...";
+
+            const stillFree = await checkStarAvailability(activeClickedStarNumber);
+            if (!stillFree) {
+                payBtn.innerText = '⛔ Star Already Purchased';
+                payBtn.style.background = '#555';
+                payBtn.style.color = '#aaa';
+                stars[activeClickedStarNumber].isBought = true;
+                alert(`⚠️ Star #${activeClickedStarNumber} was just purchased by someone else. Please choose a different star.`);
+                return;
+            }
+
+            payBtn.innerText = "Creating payment...";
+
+            let invoiceUrl, orderNumber;
+            try {
+                const resp = await fetch('https://create-plisio-invoice.YOURSUBDOMAIN.workers.dev', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        starNumber: activeClickedStarNumber,
+                        tier: selectedTier,
+                        amount: selectedPriceDoge,
+                        userName: userNameVal,
+                        message: msgVal,
+                    })
+                });
+                const data = await resp.json();
+                if (!data.invoiceUrl) throw new Error(data.error || 'No invoice URL returned');
+                invoiceUrl = data.invoiceUrl;
+                orderNumber = data.orderNumber;
+            } catch (err) {
+                payBtn.disabled = false;
+                payBtn.innerText = 'Proceed to Payment';
+                alert('Could not create payment: ' + err.message);
+                return;
+            }
+
+            // Open Plisio payment window
+            const payWin = window.open(invoiceUrl, 'plisio_payment',
+                'width=520,height=700,scrollbars=yes,resizable=yes');
+
+            payBtn.innerText = "Waiting for payment...";
+
+            // Store context so we can show congrats after confirmation
+            const pendingStarNumber = activeClickedStarNumber;
+            const pendingUserName = userNameVal;
+            const pendingMsg = msgVal;
+            const pendingTier = selectedTier;
+
+            // Poll every 2 seconds to check if the webhook has confirmed payment
+            const pollTimer = setInterval(async () => {
+                const isNowPurchased = !(await checkStarAvailability(pendingStarNumber));
+
+                if (isNowPurchased) {
+                    clearInterval(pollTimer);
+                    if (payWin && !payWin.closed) payWin.close();
+
+                    // Update local star state immediately so canvas reflects purchase
+                    stars[pendingStarNumber].isBought = true;
+                    stars[pendingStarNumber].user_name = pendingUserName;
+                    stars[pendingStarNumber].tier = pendingTier;
+                    stars[pendingStarNumber].message = pendingMsg;
+
+                    lastNeighborsFocus = null;
+                    updateNeighborsPanel(pendingStarNumber);
+
+                    ownerInput.value = "";
+                    msgInput.value = "";
+                    modal.classList.remove('active');
+                    setTimeout(() => modal.style.display = 'none', 300);
+                    payBtn.disabled = false;
+                    payBtn.innerText = "Proceed to Payment";
+                    payBtn.style.background = '';
+                    payBtn.style.color = '';
+
+                    showCongratsOverlay(pendingStarNumber);
+                    return;
+                }
+
+                // Payment window closed by user without completing payment
+                if (payWin && payWin.closed) {
+                    clearInterval(pollTimer);
+                    payBtn.disabled = false;
+                    payBtn.innerText = 'Proceed to Payment';
+                    payBtn.style.background = '';
+                    payBtn.style.color = '';
+                }
+            }, 2000);
         });
 
         // ── Pre-built color strings (avoid per-frame string allocation) ────────
