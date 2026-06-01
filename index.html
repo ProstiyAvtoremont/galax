@@ -987,6 +987,10 @@
             <label for="star-msg">Your Message</label>
             <input type="text" id="star-msg" class="input-field" placeholder="To the moon! 🚀" maxlength="80">
         </div>
+        <div class="input-group">
+            <label for="star-email">Email <span style="opacity:0.5;font-weight:normal;">(optional — receive your star link)</span></label>
+            <input type="email" id="star-email" class="input-field" placeholder="your@email.com">
+        </div>
 
         <p style="font-size:12px; color:rgba(255,255,255,0.6); margin:14px 0 0; text-align:center; line-height:1.5;">
             Any questions? Contact us at <a href="https://x.com/DOGEStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DOGEStarSpace</a>
@@ -1400,6 +1404,90 @@
         }
         initSupabaseAndStart();
 
+        // ── Handle return from Plisio payment page ────────────────────────────
+        (async function checkPaymentReturn() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paymentStatus = urlParams.get('payment');
+            const starParam = urlParams.get('star');
+            const isWelcome = urlParams.get('welcome') === '1';
+
+            if (!starParam) return;
+
+            const starNumber = parseInt(starParam);
+
+            // Clean the URL immediately so refresh doesn't re-trigger
+            window.history.replaceState({}, '', window.location.href.split('?')[0]);
+
+            if (paymentStatus === 'success' || isWelcome) {
+                // Poll until star is confirmed in Supabase (up to 30 seconds)
+                let attempts = 0;
+                const pollTimer = setInterval(async () => {
+                    attempts++;
+                    const isNowPurchased = !(await checkStarAvailability(starNumber));
+
+                    if (isNowPurchased || attempts >= 15) {
+                        clearInterval(pollTimer);
+
+                        if (isNowPurchased) {
+                            // For welcome email link: check if already used
+                            if (isWelcome && db) {
+                                const { data: starData } = await db
+                                    .from('purchased_stars')
+                                    .select('welcome_used')
+                                    .eq('star_number', starNumber)
+                                    .single();
+
+                                if (starData?.welcome_used) {
+                                    // Already used — just let the star show normally
+                                    return;
+                                }
+
+                                // Mark as used so second click won't show overlay
+                                await db
+                                    .from('purchased_stars')
+                                    .update({ welcome_used: true })
+                                    .eq('star_number', starNumber);
+                            }
+
+                            const pending = JSON.parse(
+                                sessionStorage.getItem('plisio_pending') || '{}'
+                            );
+                            sessionStorage.removeItem('plisio_pending');
+
+                            stars[starNumber].isBought = true;
+                            stars[starNumber].user_name = pending.userName || '';
+                            stars[starNumber].tier = pending.tier || 'basic';
+                            stars[starNumber].message = pending.message || '';
+                            lastNeighborsFocus = null;
+                            updateNeighborsPanel(starNumber);
+                            showCongratsOverlay(starNumber);
+                        } else {
+                            // Webhook was slow — star will appear on next reload
+                            alert('Payment received! Your star will appear shortly. Search for star #' + starNumber + ' to find it.');
+                        }
+                    }
+                }, 2000);
+
+            } else if (paymentStatus === 'failed') {
+                alert('Payment was cancelled or failed. You can try again.');
+            }
+        })();
+
+        // ── Handle returning customer whose browser was closed before congrats ─
+        (async function checkMyStarOnLoad() {
+            const myStarNumber = parseInt(localStorage.getItem('my_star'));
+            if (!myStarNumber) return;
+
+            // Wait for stars to finish loading from Supabase
+            await new Promise(resolve => setTimeout(resolve, 2500));
+
+            const star = stars[myStarNumber];
+            if (!star || !star.isBought) return;
+
+            localStorage.removeItem('my_star');
+            showCongratsOverlay(myStarNumber);
+        })();
+
         async function loadPurchasedStars() {
             if (!db) { console.warn("loadPurchasedStars: db not ready"); return; }
             try {
@@ -1753,6 +1841,7 @@
         payBtn.addEventListener('click', async () => {
             const userNameVal = ownerInput.value.trim() || "Anonymous";
             const msgVal = msgInput.value.trim() || "To the moon! 🚀";
+            const emailVal = document.getElementById('star-email').value.trim();
 
             payBtn.disabled = true;
             payBtn.innerText = "Checking availability...";
@@ -1780,6 +1869,7 @@
                         amount: selectedPriceDoge,
                         userName: userNameVal,
                         message: msgVal,
+                        email: emailVal,
                     })
                 });
                 const data = await resp.json();
@@ -1793,57 +1883,19 @@
                 return;
             }
 
-            // Open Plisio payment window
-            const payWin = window.open(invoiceUrl, 'plisio_payment',
-                'width=520,height=700,scrollbars=yes,resizable=yes');
+            // Save purchase context to sessionStorage so it survives the redirect
+            sessionStorage.setItem('plisio_pending', JSON.stringify({
+                starNumber: activeClickedStarNumber,
+                userName: userNameVal,
+                message: msgVal,
+                tier: selectedTier,
+            }));
 
-            payBtn.innerText = "Waiting for payment...";
+            // Also save to localStorage as fallback if browser is closed mid-payment
+            localStorage.setItem('my_star', String(activeClickedStarNumber));
 
-            // Store context so we can show congrats after confirmation
-            const pendingStarNumber = activeClickedStarNumber;
-            const pendingUserName = userNameVal;
-            const pendingMsg = msgVal;
-            const pendingTier = selectedTier;
-
-            // Poll every 2 seconds to check if the webhook has confirmed payment
-            const pollTimer = setInterval(async () => {
-                const isNowPurchased = !(await checkStarAvailability(pendingStarNumber));
-
-                if (isNowPurchased) {
-                    clearInterval(pollTimer);
-                    if (payWin && !payWin.closed) payWin.close();
-
-                    // Update local star state immediately so canvas reflects purchase
-                    stars[pendingStarNumber].isBought = true;
-                    stars[pendingStarNumber].user_name = pendingUserName;
-                    stars[pendingStarNumber].tier = pendingTier;
-                    stars[pendingStarNumber].message = pendingMsg;
-
-                    lastNeighborsFocus = null;
-                    updateNeighborsPanel(pendingStarNumber);
-
-                    ownerInput.value = "";
-                    msgInput.value = "";
-                    modal.classList.remove('active');
-                    setTimeout(() => modal.style.display = 'none', 300);
-                    payBtn.disabled = false;
-                    payBtn.innerText = "Proceed to Payment";
-                    payBtn.style.background = '';
-                    payBtn.style.color = '';
-
-                    showCongratsOverlay(pendingStarNumber);
-                    return;
-                }
-
-                // Payment window closed by user without completing payment
-                if (payWin && payWin.closed) {
-                    clearInterval(pollTimer);
-                    payBtn.disabled = false;
-                    payBtn.innerText = 'Proceed to Payment';
-                    payBtn.style.background = '';
-                    payBtn.style.color = '';
-                }
-            }, 2000);
+            // Redirect to Plisio — avoids all popup blocker issues
+            window.location.href = invoiceUrl;
         });
 
         // ── Pre-built color strings (avoid per-frame string allocation) ────────
