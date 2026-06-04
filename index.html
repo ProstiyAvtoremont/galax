@@ -1165,15 +1165,11 @@
                     const targetId = i;
                     const tStar = stars[targetId];
 
-                    // Scatter the previously focused star off-screen if it's outside the new range
+                    // Scatter the previously focused star off-screen
                     if (focusedStarIndex !== null && focusedStarIndex !== targetId) {
-                        const rangeMin = Math.max(0, targetId - 5);
-                        const rangeMax = Math.min(numStars - 1, targetId + 5);
-                        if (focusedStarIndex < rangeMin || focusedStarIndex > rangeMax) {
-                            const oldStar = stars[focusedStarIndex];
-                            oldStar.x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
-                            oldStar.y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
-                        }
+                        const oldStar = stars[focusedStarIndex];
+                        oldStar.x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+                        oldStar.y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
                     }
 
                     // Clear previous pin
