@@ -1005,11 +1005,6 @@
 
         let db = null;
 
-        // Read URL params immediately before any IIFE can strip them
-        const _urlParams    = new URLSearchParams(window.location.search);
-        const _urlStarParam = _urlParams.get('star');
-        const _urlStarId    = (_urlStarParam !== null) ? parseInt(_urlStarParam) : NaN;
-
         // Supabase script is in <head> so it's already loaded by the time
         // this <body> script runs — call initSupabase directly after stars are built.
         // loadPurchasedStars() is called from initSupabase() below the stars loop.
@@ -1165,14 +1160,7 @@
                     const targetId = i;
                     const tStar = stars[targetId];
 
-                    // Scatter the previously focused star off-screen
-                    if (focusedStarIndex !== null && focusedStarIndex !== targetId) {
-                        const oldStar = stars[focusedStarIndex];
-                        oldStar.x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
-                        oldStar.y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
-                    }
-
-                    // Clear previous pin
+                    // Clear pin and tooltip before switching
                     pinnedStarIndex = null;
                     tooltip.style.display = 'none';
 
@@ -1392,8 +1380,11 @@
             requestAnimationFrame(animate);
 
             // Auto-open star from shared link: ?star=N
-            // Use _urlStarId read at page load — before checkPaymentReturn strips the params
-            const hasUrlStar = !isNaN(_urlStarId) && _urlStarId >= 0 && _urlStarId < numStars;
+            // Read params here — checkPaymentReturn runs after us and strips them
+            const urlParams = new URLSearchParams(window.location.search);
+            const starParam = urlParams.get('star');
+            const urlStarId = (starParam !== null) ? parseInt(starParam) : NaN;
+            const hasUrlStar = !isNaN(urlStarId) && urlStarId >= 0 && urlStarId < numStars;
 
             if (hasUrlStar) {
                 // Delay so the canvas has rendered at least one frame,
@@ -1401,7 +1392,7 @@
                 // _searchIsAutoNav suppresses the purchase modal / tooltip during this silent load.
                 setTimeout(() => {
                     _searchIsAutoNav = true;
-                    searchInput.value = _urlStarId;
+                    searchInput.value = urlStarId;
                     searchBtn.click();
                     _searchIsAutoNav = false;
                     // After the search triggers updateNeighborsPanel, also sync the mobile drawer
@@ -1425,8 +1416,8 @@
 
             const starNumber = parseInt(starParam);
 
-            // Clean the URL immediately so refresh doesn't re-trigger
-            window.history.replaceState({}, '', window.location.href.split('?')[0]);
+            // Delay URL cleanup so initSupabaseAndStart can read ?star= first
+            setTimeout(() => window.history.replaceState({}, '', window.location.href.split('?')[0]), 1000);
 
             if (paymentStatus === 'success' || isWelcome) {
                 // Poll until star is confirmed in Supabase (up to 30 seconds)
@@ -1581,12 +1572,7 @@
                 return;
             }
 
-            // Clear previous focus: scatter it off-screen, clear pin and tooltip
-            if (previousFocusedIndex !== null && previousFocusedIndex !== idVal) {
-                const prevStar = stars[previousFocusedIndex];
-                prevStar.x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
-                prevStar.y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
-            }
+            // Clear pin and tooltip before switching to new star
             pinnedStarIndex = null;
             tooltip.style.display = 'none';
 
@@ -1997,13 +1983,7 @@
                             size *= 3.8; starColor = _COL_CO; auraColor = _COL_CO_AURA;
                         }
                     } else if (owned) {
-                        if (tier === 1) {
-                            size *= 1.8; starColor = _COL_SN; auraColor = _COL_SN_AURA;
-                        } else if (tier === 2) {
-                            size *= 2.2; starColor = _COL_CO; auraColor = _COL_CO_AURA;
-                        } else {
-                            size *= 1.4; starColor = _COL_BUY_DIM;
-                        }
+                        size *= 1.4; starColor = _COL_BUY_DIM;
                     }
 
                     _sSize[i] = size;
