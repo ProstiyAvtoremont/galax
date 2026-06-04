@@ -1165,6 +1165,17 @@
                     const targetId = i;
                     const tStar = stars[targetId];
 
+                    // Scatter the previously focused star off-screen if it's outside the new range
+                    if (focusedStarIndex !== null && focusedStarIndex !== targetId) {
+                        const rangeMin = Math.max(0, targetId - 5);
+                        const rangeMax = Math.min(numStars - 1, targetId + 5);
+                        if (focusedStarIndex < rangeMin || focusedStarIndex > rangeMax) {
+                            const oldStar = stars[focusedStarIndex];
+                            oldStar.x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+                            oldStar.y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+                        }
+                    }
+
                     // Clear previous pin
                     pinnedStarIndex = null;
                     tooltip.style.display = 'none';
@@ -1573,6 +1584,15 @@
                 alert("Please enter a valid Star ID from 0 to 1999999.");
                 return;
             }
+
+            // Clear previous focus: scatter it off-screen, clear pin and tooltip
+            if (previousFocusedIndex !== null && previousFocusedIndex !== idVal) {
+                const prevStar = stars[previousFocusedIndex];
+                prevStar.x = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+                prevStar.y = ((Math.random() - 0.5) * 3000) + (Math.random() < 0.5 ? -8000 : 8000);
+            }
+            pinnedStarIndex = null;
+            tooltip.style.display = 'none';
 
             const targetStar = stars[idVal];
             const { sx: randomScreenX, sy: randomScreenY } = getFreeZonePoint();
