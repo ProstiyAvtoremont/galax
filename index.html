@@ -1193,8 +1193,8 @@
                     const isPurchasedNow = tStar.isBought || !!row;
 
                     if (isPurchasedNow) {
-                        const uName = (row && row.user_name) || tStar.user_name || 'Anonymous Buyer';
-                        const uMsg  = (row && row.message)   || tStar.message   || '';
+                        const uName = (row && row.user_name) || tStar.user_name || 'Available for purchase';
+                        const uMsg  = (row && row.message)   || tStar.message   || 'Can be yours';
                         const uTier = (row && row.tier)      || tStar.tier      || 'basic';
                         let label = uTier === 'supernova' ? '⚡ Supernova Core'
                                   : uTier === 'constellation' ? '🌌 Constellation'
