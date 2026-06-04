@@ -1193,8 +1193,8 @@
                     const isPurchasedNow = tStar.isBought || !!row;
 
                     if (isPurchasedNow) {
-                        const uName = (row && row.user_name) || tStar.user_name || 'Available for purchase';
-                        const uMsg  = (row && row.message)   || tStar.message   || 'Can be yours';
+                        const uName = (row && row.user_name) || tStar.user_name || 'Anonymous Buyer';
+                        const uMsg  = (row && row.message)   || tStar.message   || '';
                         const uTier = (row && row.tier)      || tStar.tier      || 'basic';
                         let label = uTier === 'supernova' ? '⚡ Supernova Core'
                                   : uTier === 'constellation' ? '🌌 Constellation'
@@ -1698,15 +1698,24 @@
                 if (pinnedStarIndex === null) {
                     focusedStarIndex = null;
                     tooltip.style.display = 'block';
-                    tooltip.className = foundStar.tier;
-                    let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
-                    tooltip.innerHTML = `
+                    if (foundStar.isBought) {
+                        tooltip.className = foundStar.tier;
+                        let label = foundStar.tier === 'supernova' ? '⚡ Supernova Core' : (foundStar.tier === 'constellation' ? '🌌 Constellation' : '⭐ Basic Star');
+                        tooltip.innerHTML = `
                         <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
                         <div class="tooltip-type">${label}</div>
                         <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
                     `;
+                    } else {
+                        tooltip.className = '';
+                        tooltip.innerHTML = `
+                        <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">⭐ STAR #${foundStarIdx}</div>
+                        <div class="tooltip-title">Free to buy</div>
+                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"Can be yours."</div>
+                    `;
+                    }
                     let left = e.clientX + 15;
                     let top = e.clientY + 15;
                     if (left + tooltip.offsetWidth > window.innerWidth) left = e.clientX - tooltip.offsetWidth - 15;
