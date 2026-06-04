@@ -1589,8 +1589,8 @@
             targetYOffset = 0;
             updateNeighborsPanel(idVal);
 
-            // Skip modal/tooltip during silent URL-param page load
-            if (_searchIsAutoNav) return;
+            // For URL-param auto-nav: show tooltip for purchased stars, skip modal for free ones
+            if (_searchIsAutoNav && !targetStar.isBought) return;
 
             if (targetStar.isBought) {
                 // ── Purchased star: show owner info tooltip, pinned on screen ──
