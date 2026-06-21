@@ -1937,6 +1937,100 @@
         function _yellow(b) { return _YELLOW_LUT[Math.round(b * 100)] || _YELLOW_LUT[100]; }
         function _aura(b)   { return _AURA_LUT[Math.round(b * 100)]   || _AURA_LUT[100]; }
 
+        // ── Custom tier shapes (drawn in-place of the plain core dot) ──────────
+        // Basic stars keep the original dot. Supernova and Constellation get a
+        // distinct hand-drawn glyph in their own tier color, sized off `size`
+        // and animated off `time`, so they never look like generic emoji.
+
+        // Supernova Core: bright center + rotating spikes radiating outward.
+        function _drawSupernovaCore(sx, sy, size, time, color) {
+            const spikeCount = 6;
+            const innerR = size * 0.55;
+            const outerR = size * 2.0 + Math.sin(time * 9) * size * 0.35;
+            const rot = time * 1.4;
+
+            ctx.save();
+            ctx.translate(sx, sy);
+            ctx.rotate(rot);
+            ctx.fillStyle = color;
+            for (let s = 0; s < spikeCount; s++) {
+                const a0 = (s / spikeCount) * Math.PI * 2;
+                const a1 = a0 + (Math.PI / spikeCount) * 0.42;
+                const a2 = a0 - (Math.PI / spikeCount) * 0.42;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(a0) * outerR, Math.sin(a0) * outerR);
+                ctx.lineTo(Math.cos(a1) * innerR * 0.9, Math.sin(a1) * innerR * 0.9);
+                ctx.lineTo(Math.cos(a2) * innerR * 0.9, Math.sin(a2) * innerR * 0.9);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Bright core on top of the spikes
+            ctx.beginPath();
+            ctx.arc(sx, sy, innerR, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        // Constellation: core star + small orbiting satellite stars linked by
+        // faint lines, reading as a tiny star cluster rather than a single dot.
+        function _drawConstellationCluster(sx, sy, size, time, color) {
+            const satCount  = 4;
+            const orbitR    = size * 1.9;
+            const satSize   = size * 0.34;
+            const rot       = time * 0.55;
+
+            ctx.save();
+            ctx.translate(sx, sy);
+
+            // Faint connecting lines from core to each satellite
+            ctx.strokeStyle = color.replace(/rgba?\(([^)]+),[^,]+\)/, (m, rgb) => `rgba(${rgb.split(',').slice(0,3).join(',')},0.35)`);
+            ctx.lineWidth = Math.max(0.6, size * 0.12);
+            for (let s = 0; s < satCount; s++) {
+                const a = rot + (s / satCount) * Math.PI * 2;
+                const px = Math.cos(a) * orbitR;
+                const py = Math.sin(a) * orbitR;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(px, py);
+                ctx.stroke();
+            }
+
+            // Satellite stars
+            ctx.fillStyle = color;
+            for (let s = 0; s < satCount; s++) {
+                const a = rot + (s / satCount) * Math.PI * 2;
+                const px = Math.cos(a) * orbitR;
+                const py = Math.sin(a) * orbitR;
+                ctx.beginPath();
+                ctx.arc(px, py, satSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+
+            // Bright core star on top
+            ctx.beginPath();
+            ctx.arc(sx, sy, size * 0.85, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        // Dispatches to the right core-shape drawer for owned stars; basic
+        // tier (and unowned stars) fall through to the plain dot as before.
+        function _drawStarCore(sx, sy, size, time, color, tier, isOwned) {
+            if (isOwned && tier === 1) {
+                _drawSupernovaCore(sx, sy, size, time, color);
+            } else if (isOwned && tier === 2) {
+                _drawConstellationCluster(sx, sy, size, time, color);
+            } else {
+                ctx.beginPath();
+                ctx.arc(sx, sy, size, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+        }
+
         // ── Frame-rate cap (60 fps max) ───────────────────────────────────────
         let _lastFrameTs = 0;
         const _FRAME_MS  = 1000 / 60;
@@ -2012,16 +2106,12 @@
                         ctx.beginPath();
                         ctx.arc(sx, sy, size * 2.8, 0, Math.PI * 2);
                         ctx.fillStyle = auraColor; ctx.fill();
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, size, 0, Math.PI * 2);
-                        ctx.fillStyle = starColor; ctx.fill();
+                        _drawStarCore(sx, sy, size, time, starColor, tier, owned);
                     } else {
                         ctx.beginPath();
                         ctx.arc(sx, sy, size * 1.4, 0, Math.PI * 2);
                         ctx.fillStyle = auraColor; ctx.fill();
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, size, 0, Math.PI * 2);
-                        ctx.fillStyle = starColor; ctx.fill();
+                        _drawStarCore(sx, sy, size, time, starColor, tier, owned);
                     }
                 }
             }
