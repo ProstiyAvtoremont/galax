@@ -1027,6 +1027,31 @@
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
         const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
+
+        // ── Safe rendering helpers for user-submitted text (name/message) ──────
+        // 1) escapeHtml: neutralizes any HTML/script the buyer typed, so it is
+        //    always displayed as plain text and can never execute as markup.
+        // 2) linkifyMessage: AFTER escaping, wraps recognizable URLs in a real
+        //    <a> tag so links (website, social profile, Google Maps, etc.)
+        //    become clickable. Because linkify runs on already-escaped text,
+        //    only genuine URLs become links — raw HTML typed by a buyer stays
+        //    inert text.
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+        function linkifyMessage(str) {
+            const escaped = escapeHtml(str);
+            const urlPattern = /(\bhttps?:\/\/[^\s<]+[^\s<.,:;!?'")\]])|(\bwww\.[^\s<]+[^\s<.,:;!?'")\]])/gi;
+            return escaped.replace(urlPattern, (match) => {
+                const href = /^https?:\/\//i.test(match) ? match : `https://${match}`;
+                return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow" style="color:#ffd700;text-decoration:underline;">${match}</a>`;
+            });
+        }
         
         let selectedTier = "basic";
         let selectedPriceDoge = 1;
@@ -1155,8 +1180,8 @@
                     <span class="neighbor-num${isCenter ? ' is-selected-num' : ''}">#${i}${isCenter ? ' ◀' : ''}</span>
                     <span class="neighbor-dot ${dotClass}"></span>
                     <span class="neighbor-info">
-                        <div class="neighbor-name${!isPurchased ? ' free' : ''}">${isPurchased ? (userName || 'Anonymous') : 'Available'}</div>
-                        ${isPurchased && msg ? `<div class="neighbor-msg">"${msg}"</div>` : ''}
+                        <div class="neighbor-name${!isPurchased ? ' free' : ''}">${isPurchased ? escapeHtml(userName || 'Anonymous') : 'Available'}</div>
+                        ${isPurchased && msg ? `<div class="neighbor-msg">"${linkifyMessage(msg)}"</div>` : ''}
                     </span>
                 `;
 
@@ -1207,8 +1232,8 @@
                         pinnedTooltipHTML = `
                             <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${targetId}</div>
                             <div class="tooltip-type" style="margin-top:5px;">${label}</div>
-                            <div class="tooltip-title">${uName}</div>
-                            <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${uMsg}"</div>
+                            <div class="tooltip-title">${escapeHtml(uName)}</div>
+                            <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(uMsg)}"</div>
                             <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(tStar.x)} Y:${Math.round(tStar.y)} Z:${Math.round(tStar.z)}</div>
                         `;
                         tooltip.className = uTier;
@@ -1608,8 +1633,8 @@
                     tooltip.innerHTML = `
                         <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND STAR #${idVal}</div>
                         <div class="tooltip-type" style="margin-top:5px;">${label}</div>
-                        <div class="tooltip-title">${targetStar.user_name || 'Anonymous Buyer'}</div>
-                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${targetStar.message}"</div>
+                        <div class="tooltip-title">${escapeHtml(targetStar.user_name || 'Anonymous Buyer')}</div>
+                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(targetStar.message || '')}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
                     `;
                     let left = randomScreenX + 20;
@@ -1709,8 +1734,8 @@
                         tooltip.innerHTML = `
                         <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
                         <div class="tooltip-type">${label}</div>
-                        <div class="tooltip-title">${foundStar.user_name || 'Anonymous Buyer'}</div>
-                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${foundStar.message}"</div>
+                        <div class="tooltip-title">${escapeHtml(foundStar.user_name || 'Anonymous Buyer')}</div>
+                        <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(foundStar.message || '')}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
                     `;
                     } else {
@@ -2396,8 +2421,8 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 tooltip.innerHTML = `
                     <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${closestIdx}</div>
                     <div class="tooltip-type">${label}</div>
-                    <div class="tooltip-title">${closest.user_name || 'Anonymous'}</div>
-                    <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${closest.message || ''}"</div>
+                    <div class="tooltip-title">${escapeHtml(closest.user_name || 'Anonymous')}</div>
+                    <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${linkifyMessage(closest.message || '')}"</div>
                     <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                         Coords: X:${Math.round(closest.x)} Y:${Math.round(closest.y)} Z:${Math.round(closest.z)}
                     </div>
@@ -2444,8 +2469,8 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             tooltip.innerHTML = `
                 <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${starIdx}</div>
                 <div class="tooltip-type">${label}</div>
-                <div class="tooltip-title">${star.user_name || 'Anonymous'}</div>
-                <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${star.message || ''}"</div>
+                <div class="tooltip-title">${escapeHtml(star.user_name || 'Anonymous')}</div>
+                <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${linkifyMessage(star.message || '')}"</div>
                 <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                     Coords: X:${Math.round(star.x)} Y:${Math.round(star.y)} Z:${Math.round(star.z)}
                 </div>
