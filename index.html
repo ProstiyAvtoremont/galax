@@ -16,7 +16,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://galaxyspace.xyz/">
     <meta property="og:title" content="Digital Starfield Space — Buy Your Own Star">
-    <meta property="og:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.">
+    <meta property="og:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.">
     <meta property="og:image" content="https://galaxyspace.xyz/og-site.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -25,7 +25,7 @@
     <!-- Twitter Card tags (X / Twitter uses these instead of plain og: tags) -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Digital Starfield Space — Buy Your Own Star">
-    <meta name="twitter:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.">
+    <meta name="twitter:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.">
     <meta name="twitter:image" content="https://galaxyspace.xyz/og-site.jpg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
@@ -185,6 +185,15 @@
             overflow-x: hidden;
             word-wrap: break-word;
             word-break: break-word;
+        }
+        .tooltip-photo {
+            display: block;
+            width: 100%;
+            max-width: 220px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 6px 0;
         }
         #star-tooltip.supernova { border-color: #ff3366; box-shadow: 0 0 25px rgba(255, 51, 102, 0.3); }
         #star-tooltip.constellation { border-color: #00ffff; box-shadow: 0 0 25px rgba(0, 255, 255, 0.3); }
@@ -870,14 +879,14 @@
 <body>
 
     <div class="search-container">
-        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-499999)" min="0" max="499999">
+        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
         <button id="search-btn" class="search-btn">SEARCH</button>
     </div>
 
     <!-- Promo / Info Box -->
     <div class="promo-box">
         <div class="promo-label">✦ Your Star Awaits</div>
-        <div class="promo-text">Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.</div>
+        <div class="promo-text">Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.</div>
         <div class="promo-actions">
             <button class="promo-btn" id="promo-about-btn">ABOUT</button>
             <button class="promo-btn" id="promo-tutorial-btn">HOW TO USE</button>
@@ -916,7 +925,7 @@
         <!-- Search tab -->
         <div class="drawer-tab" id="drawer-search">
             <div class="mob-search-row">
-                <input type="number" id="mob-search-input" placeholder="Star number (0–499999)" min="0" max="499999">
+                <input type="number" id="mob-search-input" placeholder="Star number (0–1999999)" min="0" max="1999999">
                 <button id="mob-search-btn">GO</button>
             </div>
         </div>
@@ -936,7 +945,7 @@
                 <button class="mob-info-btn" onclick="showInfoOverlay('foryou')">FOR YOU</button>
             </div>
             <div style="padding:8px 0 4px; font-size:11px; color:rgba(255,215,0,0.5); text-align:center; letter-spacing:1px;">
-                Cheaper than coffee. Your personal digital star for just $7.
+                Cheaper than coffee. Your personal digital star for just $1.
             </div>
         </div>
     </div>
@@ -1018,6 +1027,14 @@
             <label for="star-email">Email <span style="opacity:0.5;font-weight:normal;">(optional — receive your star link)</span></label>
             <input type="email" id="star-email" class="input-field" placeholder="your@email.com">
         </div>
+        <div class="input-group">
+            <label for="star-photo">Photo <span style="opacity:0.5;font-weight:normal;">(optional — shown after review, usually within 24h)</span></label>
+            <input type="file" id="star-photo" accept="image/*" class="input-field" style="padding:8px;">
+            <div id="photo-preview-wrap" style="display:none; margin-top:8px; text-align:center;">
+                <img id="photo-preview" style="max-width:120px; max-height:90px; border-radius:6px; object-fit:cover;">
+                <div id="photo-status" style="font-size:11px; color:#ffd700; margin-top:4px;"></div>
+            </div>
+        </div>
 
         <p style="font-size:12px; color:rgba(255,255,255,0.6); margin:14px 0 0; text-align:center; line-height:1.5;">
             Any questions? Contact us at <a href="https://x.com/DOGEStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DOGEStarSpace</a>
@@ -1046,9 +1063,91 @@
         const tierBoxes = document.querySelectorAll('.tier-box');
         const ownerInput = document.getElementById('star-owner');
         const msgInput = document.getElementById('star-msg');
+        const photoInput = document.getElementById('star-photo');
+        const photoPreviewWrap = document.getElementById('photo-preview-wrap');
+        const photoPreview = document.getElementById('photo-preview');
+        const photoStatus = document.getElementById('photo-status');
+
+        // Holds the compressed image ready to upload once payment is confirmed.
+        // { base64, contentType } or null if no photo selected.
+        let pendingPhoto = null;
+
+        const MAX_PHOTO_DIMENSION = 800; // longest edge, px — plenty for a ~200px tooltip thumbnail
+        const PHOTO_JPEG_QUALITY = 0.78;
+
+        // Resize + compress in the browser before it ever leaves the device.
+        // Keeps uploads fast on mobile connections and keeps storage/bandwidth small.
+        function compressImageFile(file) {
+            return new Promise((resolve, reject) => {
+                if (!file.type.startsWith('image/')) {
+                    reject(new Error('Please choose an image file.'));
+                    return;
+                }
+                if (file.size > 8 * 1024 * 1024) {
+                    reject(new Error('Image is too large (max 8MB).'));
+                    return;
+                }
+                const img = new Image();
+                const reader = new FileReader();
+                reader.onload = (e) => { img.src = e.target.result; };
+                reader.onerror = () => reject(new Error('Could not read file.'));
+                img.onload = () => {
+                    let { width, height } = img;
+                    if (width > height && width > MAX_PHOTO_DIMENSION) {
+                        height = Math.round(height * (MAX_PHOTO_DIMENSION / width));
+                        width = MAX_PHOTO_DIMENSION;
+                    } else if (height >= width && height > MAX_PHOTO_DIMENSION) {
+                        width = Math.round(width * (MAX_PHOTO_DIMENSION / height));
+                        height = MAX_PHOTO_DIMENSION;
+                    }
+                    const canvasEl = document.createElement('canvas');
+                    canvasEl.width = width;
+                    canvasEl.height = height;
+                    const cctx = canvasEl.getContext('2d');
+                    cctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvasEl.toDataURL('image/jpeg', PHOTO_JPEG_QUALITY);
+                    resolve({
+                        base64: dataUrl.split(',')[1],
+                        contentType: 'image/jpeg',
+                        previewUrl: dataUrl,
+                    });
+                };
+                img.onerror = () => reject(new Error('Could not load image.'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        photoInput.addEventListener('change', async () => {
+            const file = photoInput.files[0];
+            if (!file) { pendingPhoto = null; photoPreviewWrap.style.display = 'none'; return; }
+            photoStatus.textContent = 'Processing…';
+            photoPreviewWrap.style.display = 'block';
+            try {
+                const compressed = await compressImageFile(file);
+                pendingPhoto = { base64: compressed.base64, contentType: compressed.contentType };
+                photoPreview.src = compressed.previewUrl;
+                const approxKB = Math.round((compressed.base64.length * 0.75) / 1024);
+                photoStatus.textContent = `Ready (~${approxKB}KB)`;
+            } catch (err) {
+                pendingPhoto = null;
+                photoPreviewWrap.style.display = 'none';
+                alert(err.message);
+                photoInput.value = '';
+            }
+        });
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
         const MERCHANT_WALLET = "DA56tToEYdJNfjma4sZ4wmQqec4KN1Dw4e";
+
+        // Returns an <img> tag for a star's tooltip, but only when a photo
+        // exists AND has been manually approved — pending/rejected photos
+        // never render on the public site. Lazy by construction: this only
+        // runs (and the browser only fetches the image) when a tooltip is
+        // actually being shown for that one star.
+        function starPhotoHtml(star) {
+            if (!star || !star.image_url || star.image_status !== 'approved') return '';
+            return `<img src="${star.image_url}" alt="Star photo" class="tooltip-photo" loading="lazy">`;
+        }
 
         // ── Safe rendering helpers for user-submitted text (name/message) ──────
         // 1) escapeHtml: neutralizes any HTML/script the buyer typed, so it is
@@ -1546,7 +1645,7 @@
             try {
                 const { data, error } = await db
                     .from('purchased_stars')
-                    .select('star_number, user_name, wallet_address, tier, message');
+                    .select('star_number, user_name, wallet_address, tier, message, image_url, image_status');
                 if (error) { console.warn("loadPurchasedStars DB error:", String(error.message)); return; }
                 if (!data) return;
                 console.log("loadPurchasedStars: loaded " + data.length + " stars from DB");
@@ -1558,6 +1657,10 @@
                         stars[idx].wallet_address = row.wallet_address;
                         stars[idx].tier           = row.tier    || 'basic';
                         stars[idx].message        = row.message || 'To the moon! 🚀';
+                        // Only ever treated as showable when status is 'approved' —
+                        // pending/rejected photos are fetched but never rendered.
+                        stars[idx].image_url      = row.image_url || null;
+                        stars[idx].image_status   = row.image_status || 'pending';
                     }
                 });
             } catch (e) {
@@ -1620,7 +1723,7 @@
         searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
-                alert("Please enter a valid Star ID from 0 to 499999.");
+                alert("Please enter a valid Star ID from 0 to 1999999.");
                 return;
             }
 
@@ -1656,6 +1759,7 @@
                         <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 FOUND STAR #${idVal}</div>
                         <div class="tooltip-type" style="margin-top:5px;">${label}</div>
                         <div class="tooltip-title">${escapeHtml(targetStar.user_name || 'Anonymous Buyer')}</div>
+                        ${starPhotoHtml(targetStar)}
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(targetStar.message || '')}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
                     `;
@@ -1757,6 +1861,7 @@
                         <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${foundStarIdx}</div>
                         <div class="tooltip-type">${label}</div>
                         <div class="tooltip-title">${escapeHtml(foundStar.user_name || 'Anonymous Buyer')}</div>
+                        ${starPhotoHtml(foundStar)}
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(foundStar.message || '')}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
                     `;
@@ -1823,6 +1928,9 @@
         modalClose.addEventListener('click', () => {
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
+            pendingPhoto = null;
+            photoInput.value = '';
+            photoPreviewWrap.style.display = 'none';
             payBtn.disabled = false;
             payBtn.innerText = 'Proceed to Payment';
             payBtn.style.background = '';
@@ -1922,6 +2030,29 @@
                 return;
             }
 
+            let uploadedImageUrl = null;
+            if (pendingPhoto) {
+                payBtn.innerText = "Uploading photo...";
+                try {
+                    const uploadResp = await fetch('https://upload-star-photo.josandhost.workers.dev', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            imageBase64: pendingPhoto.base64,
+                            contentType: pendingPhoto.contentType,
+                        })
+                    });
+                    const uploadData = await uploadResp.json();
+                    if (!uploadData.imageUrl) throw new Error(uploadData.error || 'Photo upload failed');
+                    uploadedImageUrl = uploadData.imageUrl;
+                } catch (err) {
+                    payBtn.disabled = false;
+                    payBtn.innerText = 'Proceed to Payment';
+                    alert('Could not upload photo: ' + err.message + '\nYou can try again, or remove the photo and continue without one.');
+                    return;
+                }
+            }
+
             payBtn.innerText = "Creating payment...";
 
             let invoiceUrl, orderNumber;
@@ -1936,6 +2067,7 @@
                         userName: userNameVal,
                         message: msgVal,
                         email: emailVal,
+                        imageUrl: uploadedImageUrl,
                     })
                 });
                 const data = await resp.json();
@@ -2335,7 +2467,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             const doMobSearch = () => {
                 const idVal = parseInt(mobSearchInput.value);
                 if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
-                    alert('Please enter a valid Star ID from 0 to 499999.');
+                    alert('Please enter a valid Star ID from 0 to 1999999.');
                     return;
                 }
                 // Mirror to desktop search and trigger
@@ -2444,6 +2576,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                     <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${closestIdx}</div>
                     <div class="tooltip-type">${label}</div>
                     <div class="tooltip-title">${escapeHtml(closest.user_name || 'Anonymous')}</div>
+                    ${starPhotoHtml(closest)}
                     <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${linkifyMessage(closest.message || '')}"</div>
                     <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                         Coords: X:${Math.round(closest.x)} Y:${Math.round(closest.y)} Z:${Math.round(closest.z)}
@@ -2492,6 +2625,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 <div class="tooltip-type" style="color:#ffd700;font-weight:bold;">📍 STAR #${starIdx}</div>
                 <div class="tooltip-type">${label}</div>
                 <div class="tooltip-title">${escapeHtml(star.user_name || 'Anonymous')}</div>
+                ${starPhotoHtml(star)}
                 <div style="font-style:italic;opacity:0.9;margin:4px 0;">"${linkifyMessage(star.message || '')}"</div>
                 <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                     Coords: X:${Math.round(star.x)} Y:${Math.round(star.y)} Z:${Math.round(star.z)}
