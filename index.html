@@ -996,14 +996,14 @@
         <h3 id="modal-title" style="color: #ffd700; margin-top: 0; margin-bottom: 5px;">Claim This Star</h3>
         <p style="font-size: 12px; opacity: 0.7; margin-bottom: 15px;">Immortalize your name on the galaxy map via DOGE.</p>
         
-        <div class="tier-box selected" data-tier="basic" data-price="1">
-            <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star ($1)</div>
+        <div class="tier-box selected" data-tier="basic" data-price="7">
+            <div style="font-weight:bold; color:#ffd700;">⭐ Basic Star ($7)</div>
         </div>
-        <div class="tier-box" data-tier="supernova" data-price="2">
-            <div style="font-weight:bold; color:#ff3366;">✨ Supernova ($2)</div>
+        <div class="tier-box" data-tier="supernova" data-price="14">
+            <div style="font-weight:bold; color:#ff3366;">✨ Supernova ($14)</div>
         </div>
-        <div class="tier-box" data-tier="constellation" data-price="4">
-            <div style="font-weight:bold; color:#00ffff;">🌌 Constellation ($4)</div>
+        <div class="tier-box" data-tier="constellation" data-price="21">
+            <div style="font-weight:bold; color:#00ffff;">🌌 Constellation ($21)</div>
         </div>
 
         <div class="input-group">
@@ -1076,7 +1076,7 @@
         }
         
         let selectedTier = "basic";
-        let selectedPriceDoge = 1;
+        let selectedPriceDoge = 7;
         let activeClickedStarNumber = null;
         let focusedStarIndex = null;
         let previousFocusedIndex = null;  // tracks the last focused star so old neighbors can be hidden
@@ -1337,7 +1337,7 @@
         let cx = canvas.width / 2;
         let cy = canvas.height / 2;
 
-        const numStars = 2000000;
+        const numStars = 500000;
         const rotateSpeed = 0.3;
 
         // ── Typed-array backing store ──────────────────────────────────────────
