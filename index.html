@@ -879,7 +879,7 @@
 <body>
 
     <div class="search-container">
-        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-1999999)" min="0" max="1999999">
+        <input type="number" id="search-input" class="search-input" placeholder="Star ID (0-499999)" min="0" max="499999">
         <button id="search-btn" class="search-btn">SEARCH</button>
     </div>
 
@@ -925,7 +925,7 @@
         <!-- Search tab -->
         <div class="drawer-tab" id="drawer-search">
             <div class="mob-search-row">
-                <input type="number" id="mob-search-input" placeholder="Star number (0–1999999)" min="0" max="1999999">
+                <input type="number" id="mob-search-input" placeholder="Star number (0–499999)" min="0" max="499999">
                 <button id="mob-search-btn">GO</button>
             </div>
         </div>
@@ -1723,7 +1723,7 @@
         searchBtn.addEventListener('click', () => {
             const idVal = parseInt(searchInput.value);
             if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
-                alert("Please enter a valid Star ID from 0 to 1999999.");
+                alert("Please enter a valid Star ID from 0 to 499999.");
                 return;
             }
 
@@ -2467,7 +2467,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
             const doMobSearch = () => {
                 const idVal = parseInt(mobSearchInput.value);
                 if (isNaN(idVal) || idVal < 0 || idVal >= numStars) {
-                    alert('Please enter a valid Star ID from 0 to 1999999.');
+                    alert('Please enter a valid Star ID from 0 to 499999.');
                     return;
                 }
                 // Mirror to desktop search and trigger
