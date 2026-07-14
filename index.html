@@ -16,7 +16,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://galaxyspace.xyz/">
     <meta property="og:title" content="Digital Starfield Space — Buy Your Own Star">
-    <meta property="og:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.">
+    <meta property="og:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.">
     <meta property="og:image" content="https://galaxyspace.xyz/og-site.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -25,7 +25,7 @@
     <!-- Twitter Card tags (X / Twitter uses these instead of plain og: tags) -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Digital Starfield Space — Buy Your Own Star">
-    <meta name="twitter:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.">
+    <meta name="twitter:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.">
     <meta name="twitter:image" content="https://galaxyspace.xyz/og-site.jpg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
@@ -544,6 +544,54 @@
             justify-content: center;
         }
         #congrats-overlay.visible { display: flex; }
+        #star-card-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 210;
+            background: rgba(1, 1, 8, 0.93);
+            backdrop-filter: blur(20px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #star-card-modal.visible { display: flex; }
+        .star-card-box {
+            max-width: 340px;
+            width: 100%;
+            text-align: center;
+        }
+        .star-card-box img {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.15);
+            display: block;
+            margin-bottom: 18px;
+            background: #050510;
+        }
+        .star-card-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .star-card-btn {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .star-card-btn:hover { background: rgba(255, 215, 0, 0.25); }
+        .star-card-btn-secondary {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+        }
         .congrats-box {
             max-width: 520px;
             width: 90%;
@@ -886,7 +934,7 @@
     <!-- Promo / Info Box -->
     <div class="promo-box">
         <div class="promo-label">✦ Your Star Awaits</div>
-        <div class="promo-text">Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.</div>
+        <div class="promo-text">Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.</div>
         <div class="promo-actions">
             <button class="promo-btn" id="promo-about-btn">ABOUT</button>
             <button class="promo-btn" id="promo-tutorial-btn">HOW TO USE</button>
@@ -945,7 +993,7 @@
                 <button class="mob-info-btn" onclick="showInfoOverlay('foryou')">FOR YOU</button>
             </div>
             <div style="padding:8px 0 4px; font-size:11px; color:rgba(255,215,0,0.5); text-align:center; letter-spacing:1px;">
-                Cheaper than coffee. Your personal digital star for just $1.
+                Cheaper than coffee. Your personal digital star for just $7.
             </div>
         </div>
     </div>
@@ -969,6 +1017,7 @@
                 <button class="congrats-copy-btn" id="congrats-copy-btn">COPY</button>
             </div>
             <div class="congrats-share-label">✦ Share your star</div>
+            <button id="congrats-get-image-btn" class="star-card-btn" style="margin-bottom:14px;">🖼 Get Shareable Image</button>
             <div class="congrats-share-row">
                 <a id="share-twitter"   class="share-btn twitter"   target="_blank" rel="noopener">𝕏 Twitter</a>
                 <a id="share-facebook"  class="share-btn facebook"  target="_blank" rel="noopener">Facebook</a>
@@ -978,6 +1027,17 @@
                 <a id="share-viber"     class="share-btn viber"     target="_blank" rel="noopener">Viber</a>
             </div>
             <button class="congrats-close-btn" id="congrats-close-btn">Continue exploring the galaxy</button>
+        </div>
+    </div>
+
+    <div id="star-card-modal">
+        <div class="star-card-box">
+            <img id="star-card-preview" alt="Your shareable star card">
+            <div class="star-card-actions">
+                <button id="star-card-download" class="star-card-btn">⬇ Download</button>
+                <button id="star-card-share" class="star-card-btn" style="display:none;">📤 Share</button>
+                <button id="star-card-close" class="star-card-btn star-card-btn-secondary">Close</button>
+            </div>
         </div>
     </div>
 
@@ -1037,7 +1097,7 @@
         </div>
 
         <p style="font-size:12px; color:rgba(255,255,255,0.6); margin:14px 0 0; text-align:center; line-height:1.5;">
-            Any questions? Contact us at <a href="https://x.com/DOGEStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DOGEStarSpace</a>
+            Any questions? Contact us at <a href="https://x.com/DigiStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DigiStarSpace</a>
         </p>
 
         <button class="pay-btn" id="pay-btn">Proceed to Payment</button>
@@ -1147,6 +1207,209 @@
         function starPhotoHtml(star) {
             if (!star || !star.image_url || star.image_status !== 'approved') return '';
             return `<img src="${star.image_url}" alt="Star photo" class="tooltip-photo" loading="lazy">`;
+        }
+
+        // Small "get shareable image" button shown in every purchased-star tooltip.
+        function shareCardButtonHtml(starNumber) {
+            return `<button onclick="openStarCardModal(stars[${starNumber}], ${starNumber})" style="margin-top:6px; background:rgba(255,215,0,0.15); border:1px solid #ffd700; color:#ffd700; padding:5px 12px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;">📤 Get Shareable Image</button>`;
+        }
+
+        // ── Shareable star-card generator ───────────────────────────────────
+        // Draws a stylized 1080x1920 (Story/Reel-format) PNG for a given star,
+        // entirely with Canvas 2D — no external assets needed, works offline.
+        function tierCardColor(tier) {
+            if (tier === 'supernova') return '#ff3366';
+            if (tier === 'constellation') return '#00ffff';
+            return '#ffd700';
+        }
+        function tierCardLabel(tier) {
+            if (tier === 'supernova') return 'SUPERNOVA STAR';
+            if (tier === 'constellation') return 'CONSTELLATION STAR';
+            return 'BASIC STAR';
+        }
+        function roundRectPath(ctx, x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+        function drawSparkleStar(ctx, x, y, size, col) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(0, -size);
+            ctx.quadraticCurveTo(size * 0.15, -size * 0.15, size, 0);
+            ctx.quadraticCurveTo(size * 0.15, size * 0.15, 0, size);
+            ctx.quadraticCurveTo(-size * 0.15, size * 0.15, -size, 0);
+            ctx.quadraticCurveTo(-size * 0.15, -size * 0.15, 0, -size);
+            ctx.fill();
+            ctx.restore();
+        }
+        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            const lines = [];
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                    lines.push(line.trim());
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line.trim());
+            lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+            return lines.length;
+        }
+
+        function generateStarCardDataUrl(star, starNumber) {
+            const W = 1080, H = 1920;
+            const canvasEl = document.createElement('canvas');
+            canvasEl.width = W;
+            canvasEl.height = H;
+            const ctx = canvasEl.getContext('2d');
+            const color = tierCardColor(star.tier);
+
+            // Background gradient
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+            bgGrad.addColorStop(0, '#03030a');
+            bgGrad.addColorStop(0.5, '#0a0a1a');
+            bgGrad.addColorStop(1, '#050510');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, W, H);
+
+            // Radial glow behind the main star
+            const glowY = 620;
+            const radial = ctx.createRadialGradient(W / 2, glowY, 0, W / 2, glowY, 520);
+            radial.addColorStop(0, color + '55');
+            radial.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = radial;
+            ctx.fillRect(0, 0, W, H);
+
+            // Scattered background stars
+            for (let i = 0; i < 220; i++) {
+                const x = Math.random() * W;
+                const y = Math.random() * H;
+                const r = Math.random() * 1.8 + 0.3;
+                ctx.globalAlpha = Math.random() * 0.7 + 0.2;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // A handful of small gold sparkles scattered around
+            for (let i = 0; i < 10; i++) {
+                drawSparkleStar(ctx, Math.random() * W, Math.random() * H * 0.9, Math.random() * 6 + 3, 'rgba(255,215,0,0.55)');
+            }
+
+            // Main glowing star
+            drawSparkleStar(ctx, W / 2, glowY, 95, color);
+            drawSparkleStar(ctx, W / 2, glowY, 42, '#ffffff');
+
+            // Title
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '700 64px sans-serif';
+            ctx.fillText(`STAR #${starNumber}`, W / 2, 900);
+
+            // Tier badge
+            const badgeText = tierCardLabel(star.tier);
+            ctx.font = '700 30px sans-serif';
+            const badgeWidth = ctx.measureText(badgeText).width + 60;
+            const badgeX = W / 2 - badgeWidth / 2;
+            const badgeY = 950;
+            ctx.fillStyle = color + '33';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            roundRectPath(ctx, badgeX, badgeY, badgeWidth, 56, 28);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.fillText(badgeText, W / 2, badgeY + 38);
+
+            // Message
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'italic 400 38px sans-serif';
+            const msg = `"${(star.message || '').slice(0, 180)}"`;
+            wrapCanvasText(ctx, msg, W / 2, 1090, 860, 52);
+
+            // Named by
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.font = '400 28px sans-serif';
+            ctx.fillText(`— Named by ${(star.user_name || 'Anonymous').slice(0, 40)}`, W / 2, 1300);
+
+            // Coordinates
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.font = '400 22px monospace';
+            ctx.fillText(`X:${Math.round(star.x)}  Y:${Math.round(star.y)}  Z:${Math.round(star.z)}`, W / 2, 1350);
+
+            // Footer separator + branding
+            ctx.strokeStyle = 'rgba(255,215,0,0.3)';
+            ctx.beginPath();
+            ctx.moveTo(W / 2 - 150, 1720);
+            ctx.lineTo(W / 2 + 150, 1720);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '700 44px sans-serif';
+            ctx.fillText('⭐ galaxyspace.xyz', W / 2, 1790);
+
+            ctx.fillStyle = 'rgba(255,255,255,0.55)';
+            ctx.font = '400 26px sans-serif';
+            ctx.fillText('Name a star for someone you love', W / 2, 1835);
+
+            return canvasEl.toDataURL('image/png');
+        }
+
+        // Opens the shareable-image modal for a given star, generating the
+        // image lazily (only when actually requested, never pre-generated in bulk).
+        function openStarCardModal(star, starNumber) {
+            if (!star) return;
+            const dataUrl = generateStarCardDataUrl(star, starNumber);
+            const modal = document.getElementById('star-card-modal');
+            const img = document.getElementById('star-card-preview');
+            img.src = dataUrl;
+            modal.classList.add('visible');
+
+            document.getElementById('star-card-download').onclick = () => {
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = `star-${starNumber}.png`;
+                a.click();
+            };
+
+            const shareBtn = document.getElementById('star-card-share');
+            if (navigator.share && navigator.canShare) {
+                shareBtn.style.display = 'inline-block';
+                shareBtn.onclick = async () => {
+                    try {
+                        const blob = await (await fetch(dataUrl)).blob();
+                        const file = new File([blob], `star-${starNumber}.png`, { type: 'image/png' });
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: `Star #${starNumber}`,
+                                text: `I named a star in the digital galaxy! ⭐`,
+                            });
+                        }
+                    } catch (e) {
+                        // user cancelled share sheet or it failed silently — no action needed
+                    }
+                };
+            } else {
+                shareBtn.style.display = 'none';
+            }
+
+            document.getElementById('star-card-close').onclick = () => {
+                modal.classList.remove('visible');
+            };
         }
 
         // ── Safe rendering helpers for user-submitted text (name/message) ──────
@@ -1762,6 +2025,7 @@
                         ${starPhotoHtml(targetStar)}
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(targetStar.message || '')}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(targetStar.x)} Y:${Math.round(targetStar.y)} Z:${Math.round(targetStar.z)}</div>
+                        ${shareCardButtonHtml(idVal)}
                     `;
                     let left = randomScreenX + 20;
                     let top  = randomScreenY - 20;
@@ -1864,6 +2128,7 @@
                         ${starPhotoHtml(foundStar)}
                         <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(foundStar.message || '')}"</div>
                         <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(foundStar.x)} Y:${Math.round(foundStar.y)} Z:${Math.round(foundStar.z)}</div>
+                        ${shareCardButtonHtml(foundStarIdx)}
                     `;
                     } else {
                         tooltip.className = '';
@@ -2001,6 +2266,10 @@
                 `https://t.me/share/url?url=${encodeURIComponent(starLink)}&text=${encodeURIComponent('I bought my own star in the digital galaxy!')}`;
             document.getElementById('share-viber').href =
                 `viber://forward?text=${shareMsg}`;
+
+            document.getElementById('congrats-get-image-btn').onclick = () => {
+                openStarCardModal(stars[starNum], starNum);
+            };
 
             const congratsOverlay = document.getElementById('congrats-overlay');
             congratsOverlay.classList.add('visible');
@@ -2343,7 +2612,7 @@ After that, click the payment button, and after the payment is completed, you wi
 
 We respect and understand your anonymity, so please be sure to save the link to your star or write down the number of the star you purchased somewhere convenient. You can also share this link on social media or instant messaging apps, where you can always find this information for reference.
 
-If necessary, you can always contact us on Twitter: @DOGEStarSpace.`,
+If necessary, you can always contact us on Twitter: @DigiStarSpace.`,
                 html: `Becoming the owner of a star is very simple. If you click the "BUY A STAR" button, a window will appear offering the opportunity to purchase a star. Clicking on the "BUY A STAR" button allows you to purchase a star by its serial number from those available for sale. If you want to purchase a star with a specific serial number, enter that number in the "SEARCH" box, and you'll be able to purchase the star with that serial number.
 
 Stars are divided into three types, each based on their visibility when searching in galactic space. However, the operating principle, search, and display are the same for all stars.
@@ -2358,7 +2627,7 @@ After that, click the payment button, and after the payment is completed, you wi
 
 We respect and understand your anonymity, so please be sure to save the link to your star or write down the number of the star you purchased somewhere convenient. You can also share this link on social media or instant messaging apps, where you can always find this information for reference.
 
-If necessary, you can always contact us on Twitter: <a href="https://x.com/DOGEStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DOGEStarSpace</a>.`
+If necessary, you can always contact us on Twitter: <a href="https://x.com/DigiStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DigiStarSpace</a>.`
             },
             tos: {
                 label: '✦ Terms of Service',
@@ -2581,6 +2850,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                     <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                         Coords: X:${Math.round(closest.x)} Y:${Math.round(closest.y)} Z:${Math.round(closest.z)}
                     </div>
+                    ${shareCardButtonHtml(closestIdx)}
                 `;
                 tooltip.style.display = 'block';
 
@@ -2630,6 +2900,7 @@ Please respect each other, maintain decorum, and use correct reasoning in your m
                 <div style="font-size:11px;color:#ffd700;margin:4px 0;">
                     Coords: X:${Math.round(star.x)} Y:${Math.round(star.y)} Z:${Math.round(star.z)}
                 </div>
+                ${shareCardButtonHtml(starIdx)}
             `;
             tooltip.style.display = 'block';
 
