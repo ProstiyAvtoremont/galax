@@ -2585,6 +2585,12 @@
         const _COL_SN_AURA  = 'rgba(255,51,102,0.35)';
         const _COL_CO_AURA  = 'rgba(0,255,255,0.40)';
         const _COL_BUY_DIM  = 'rgba(255,235,120,0.70)';
+        // Ambient (non-focused) tier colors — true hue at reduced opacity, so tier
+        // is readable from a distance while browsing, without being as loud as the
+        // focused-star treatment. Zero extra per-frame cost: just a different
+        // color constant, same single ctx.arc/path draw already happening.
+        const _COL_SN_DIM   = 'rgba(255,51,102,0.6)';
+        const _COL_CO_DIM   = 'rgba(0,255,255,0.6)';
         // Brightness varies per star per frame, so we still need string building,
         // but using a lookup table of pre-built strings (100 steps) avoids
         // the full `rgba(255, 235, 120, ${brightness})` template each time.
@@ -2752,7 +2758,13 @@
                             size *= 3.8; starColor = _COL_CO; auraColor = _COL_CO_AURA;
                         }
                     } else if (owned) {
-                        size *= 1.4; starColor = _COL_BUY_DIM;
+                        if (tier === 1) {
+                            size *= 1.8; starColor = _COL_SN_DIM;
+                        } else if (tier === 2) {
+                            size *= 2.0; starColor = _COL_CO_DIM;
+                        } else {
+                            size *= 1.4; starColor = _COL_BUY_DIM;
+                        }
                     }
 
                     _sSize[i] = size;
