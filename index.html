@@ -16,7 +16,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://galaxyspace.xyz/">
     <meta property="og:title" content="Digital Starfield Space — Buy Your Own Star">
-    <meta property="og:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.">
+    <meta property="og:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.">
     <meta property="og:image" content="https://galaxyspace.xyz/og-site.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -25,7 +25,7 @@
     <!-- Twitter Card tags (X / Twitter uses these instead of plain og: tags) -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Digital Starfield Space — Buy Your Own Star">
-    <meta name="twitter:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.">
+    <meta name="twitter:description" content="Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.">
     <meta name="twitter:image" content="https://galaxyspace.xyz/og-site.jpg">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
@@ -563,6 +563,7 @@
         }
         .star-card-box img {
             width: 100%;
+            min-height: 200px;
             border-radius: 16px;
             border: 1px solid rgba(255, 215, 0, 0.3);
             box-shadow: 0 0 60px rgba(255, 215, 0, 0.15);
@@ -934,7 +935,7 @@
     <!-- Promo / Info Box -->
     <div class="promo-box">
         <div class="promo-label">✦ Your Star Awaits</div>
-        <div class="promo-text">Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $7.</div>
+        <div class="promo-text">Eternalize your name and thoughts in the digital galaxy. Leave your mark — your personal digital star for just $1.</div>
         <div class="promo-actions">
             <button class="promo-btn" id="promo-about-btn">ABOUT</button>
             <button class="promo-btn" id="promo-tutorial-btn">HOW TO USE</button>
@@ -993,7 +994,7 @@
                 <button class="mob-info-btn" onclick="showInfoOverlay('foryou')">FOR YOU</button>
             </div>
             <div style="padding:8px 0 4px; font-size:11px; color:rgba(255,215,0,0.5); text-align:center; letter-spacing:1px;">
-                Cheaper than coffee. Your personal digital star for just $7.
+                Cheaper than coffee. Your personal digital star for just $1.
             </div>
         </div>
     </div>
@@ -1097,7 +1098,7 @@
         </div>
 
         <p style="font-size:12px; color:rgba(255,255,255,0.6); margin:14px 0 0; text-align:center; line-height:1.5;">
-            Any questions? Contact us at <a href="https://x.com/DigiStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DigiStarSpace</a>
+            Any questions? Contact us at <a href="https://x.com/DOGEStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DOGEStarSpace</a>
         </p>
 
         <button class="pay-btn" id="pay-btn">Proceed to Payment</button>
@@ -1216,7 +1217,8 @@
 
         // ── Shareable star-card generator ───────────────────────────────────
         // Draws a stylized 1080x1920 (Story/Reel-format) PNG for a given star,
-        // entirely with Canvas 2D — no external assets needed, works offline.
+        // using Canvas 2D. If the star has an approved photo, it's drawn into
+        // a framed box; otherwise a stylized glowing sparkle icon is used instead.
         function tierCardColor(tier) {
             if (tier === 'supernova') return '#ff3366';
             if (tier === 'constellation') return '#00ffff';
@@ -1268,115 +1270,154 @@
         }
 
         function generateStarCardDataUrl(star, starNumber) {
-            const W = 1080, H = 1920;
-            const canvasEl = document.createElement('canvas');
-            canvasEl.width = W;
-            canvasEl.height = H;
-            const ctx = canvasEl.getContext('2d');
-            const color = tierCardColor(star.tier);
+            return new Promise((resolve) => {
+                const W = 1080, H = 1920;
+                const canvasEl = document.createElement('canvas');
+                canvasEl.width = W;
+                canvasEl.height = H;
+                const ctx = canvasEl.getContext('2d');
+                const color = tierCardColor(star.tier);
+                const hasPhoto = !!(star.image_url && star.image_status === 'approved');
 
-            // Background gradient
-            const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
-            bgGrad.addColorStop(0, '#03030a');
-            bgGrad.addColorStop(0.5, '#0a0a1a');
-            bgGrad.addColorStop(1, '#050510');
-            ctx.fillStyle = bgGrad;
-            ctx.fillRect(0, 0, W, H);
+                function drawBackground() {
+                    const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+                    bgGrad.addColorStop(0, '#03030a');
+                    bgGrad.addColorStop(0.5, '#0a0a1a');
+                    bgGrad.addColorStop(1, '#050510');
+                    ctx.fillStyle = bgGrad;
+                    ctx.fillRect(0, 0, W, H);
 
-            // Radial glow behind the main star
-            const glowY = 620;
-            const radial = ctx.createRadialGradient(W / 2, glowY, 0, W / 2, glowY, 520);
-            radial.addColorStop(0, color + '55');
-            radial.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = radial;
-            ctx.fillRect(0, 0, W, H);
+                    const glowY = hasPhoto ? 700 : 620;
+                    const radial = ctx.createRadialGradient(W / 2, glowY, 0, W / 2, glowY, 520);
+                    radial.addColorStop(0, color + '55');
+                    radial.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = radial;
+                    ctx.fillRect(0, 0, W, H);
 
-            // Scattered background stars
-            for (let i = 0; i < 220; i++) {
-                const x = Math.random() * W;
-                const y = Math.random() * H;
-                const r = Math.random() * 1.8 + 0.3;
-                ctx.globalAlpha = Math.random() * 0.7 + 0.2;
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.globalAlpha = 1;
+                    for (let i = 0; i < 220; i++) {
+                        const x = Math.random() * W;
+                        const y = Math.random() * H;
+                        const r = Math.random() * 1.8 + 0.3;
+                        ctx.globalAlpha = Math.random() * 0.7 + 0.2;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(x, y, r, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1;
 
-            // A handful of small gold sparkles scattered around
-            for (let i = 0; i < 10; i++) {
-                drawSparkleStar(ctx, Math.random() * W, Math.random() * H * 0.9, Math.random() * 6 + 3, 'rgba(255,215,0,0.55)');
-            }
+                    for (let i = 0; i < 10; i++) {
+                        drawSparkleStar(ctx, Math.random() * W, Math.random() * H * 0.9, Math.random() * 6 + 3, 'rgba(255,215,0,0.55)');
+                    }
+                }
 
-            // Main glowing star
-            drawSparkleStar(ctx, W / 2, glowY, 95, color);
-            drawSparkleStar(ctx, W / 2, glowY, 42, '#ffffff');
+                function drawTextBlock(photoBottomY) {
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = '700 60px sans-serif';
+                    const titleY = hasPhoto ? 150 : 900;
+                    ctx.fillText(`STAR #${starNumber}`, W / 2, titleY);
 
-            // Title
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#ffd700';
-            ctx.font = '700 64px sans-serif';
-            ctx.fillText(`STAR #${starNumber}`, W / 2, 900);
+                    const badgeText = tierCardLabel(star.tier);
+                    ctx.font = '700 28px sans-serif';
+                    const badgeWidth = ctx.measureText(badgeText).width + 60;
+                    const badgeX = W / 2 - badgeWidth / 2;
+                    const badgeY = titleY + 40;
+                    ctx.fillStyle = color + '33';
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    roundRectPath(ctx, badgeX, badgeY, badgeWidth, 52, 26);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = color;
+                    ctx.fillText(badgeText, W / 2, badgeY + 35);
 
-            // Tier badge
-            const badgeText = tierCardLabel(star.tier);
-            ctx.font = '700 30px sans-serif';
-            const badgeWidth = ctx.measureText(badgeText).width + 60;
-            const badgeX = W / 2 - badgeWidth / 2;
-            const badgeY = 950;
-            ctx.fillStyle = color + '33';
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            roundRectPath(ctx, badgeX, badgeY, badgeWidth, 56, 28);
-            ctx.fill();
-            ctx.stroke();
-            ctx.fillStyle = color;
-            ctx.fillText(badgeText, W / 2, badgeY + 38);
+                    if (!hasPhoto) {
+                        drawSparkleStar(ctx, W / 2, 620, 95, color);
+                        drawSparkleStar(ctx, W / 2, 620, 42, '#ffffff');
+                    }
 
-            // Message
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'italic 400 38px sans-serif';
-            const msg = `"${(star.message || '').slice(0, 180)}"`;
-            wrapCanvasText(ctx, msg, W / 2, 1090, 860, 52);
+                    const msgY = hasPhoto ? photoBottomY + 70 : 1090;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'italic 400 36px sans-serif';
+                    const msg = `"${(star.message || '').slice(0, 180)}"`;
+                    const lineCount = wrapCanvasText(ctx, msg, W / 2, msgY, 860, 48);
 
-            // Named by
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
-            ctx.font = '400 28px sans-serif';
-            ctx.fillText(`— Named by ${(star.user_name || 'Anonymous').slice(0, 40)}`, W / 2, 1300);
+                    const namedByY = msgY + lineCount * 48 + 40;
+                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                    ctx.font = '400 26px sans-serif';
+                    ctx.fillText(`— Named by ${(star.user_name || 'Anonymous').slice(0, 40)}`, W / 2, namedByY);
 
-            // Coordinates
-            ctx.fillStyle = 'rgba(255,255,255,0.35)';
-            ctx.font = '400 22px monospace';
-            ctx.fillText(`X:${Math.round(star.x)}  Y:${Math.round(star.y)}  Z:${Math.round(star.z)}`, W / 2, 1350);
+                    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                    ctx.font = '400 20px monospace';
+                    ctx.fillText(`X:${Math.round(star.x)}  Y:${Math.round(star.y)}  Z:${Math.round(star.z)}`, W / 2, namedByY + 42);
 
-            // Footer separator + branding
-            ctx.strokeStyle = 'rgba(255,215,0,0.3)';
-            ctx.beginPath();
-            ctx.moveTo(W / 2 - 150, 1720);
-            ctx.lineTo(W / 2 + 150, 1720);
-            ctx.stroke();
+                    ctx.strokeStyle = 'rgba(255,215,0,0.3)';
+                    ctx.beginPath();
+                    ctx.moveTo(W / 2 - 150, 1740);
+                    ctx.lineTo(W / 2 + 150, 1740);
+                    ctx.stroke();
 
-            ctx.fillStyle = '#ffd700';
-            ctx.font = '700 44px sans-serif';
-            ctx.fillText('⭐ galaxyspace.xyz', W / 2, 1790);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = '700 42px sans-serif';
+                    ctx.fillText('⭐ galaxyspace.xyz', W / 2, 1800);
 
-            ctx.fillStyle = 'rgba(255,255,255,0.55)';
-            ctx.font = '400 26px sans-serif';
-            ctx.fillText('Name a star for someone you love', W / 2, 1835);
+                    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+                    ctx.font = '400 24px sans-serif';
+                    ctx.fillText('Name a star for someone you love', W / 2, 1842);
+                }
 
-            return canvasEl.toDataURL('image/png');
+                drawBackground();
+
+                if (hasPhoto) {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    const frameX = 110, frameY = 250, frameW = W - 220, frameH = 620, radius = 20;
+
+                    img.onload = () => {
+                        ctx.save();
+                        roundRectPath(ctx, frameX, frameY, frameW, frameH, radius);
+                        ctx.clip();
+                        const scale = Math.max(frameW / img.width, frameH / img.height);
+                        const drawW = img.width * scale, drawH = img.height * scale;
+                        const dx = frameX + (frameW - drawW) / 2, dy = frameY + (frameH - drawH) / 2;
+                        ctx.drawImage(img, dx, dy, drawW, drawH);
+                        ctx.restore();
+
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 3;
+                        roundRectPath(ctx, frameX, frameY, frameW, frameH, radius);
+                        ctx.stroke();
+
+                        drawTextBlock(frameY + frameH);
+                        resolve(canvasEl.toDataURL('image/png'));
+                    };
+                    img.onerror = () => {
+                        // Photo failed to load (network/CORS) — fall back gracefully
+                        drawSparkleStar(ctx, W / 2, 620, 95, color);
+                        drawSparkleStar(ctx, W / 2, 620, 42, '#ffffff');
+                        drawTextBlock(620);
+                        resolve(canvasEl.toDataURL('image/png'));
+                    };
+                    img.src = star.image_url;
+                } else {
+                    drawTextBlock(620);
+                    resolve(canvasEl.toDataURL('image/png'));
+                }
+            });
         }
 
         // Opens the shareable-image modal for a given star, generating the
         // image lazily (only when actually requested, never pre-generated in bulk).
-        function openStarCardModal(star, starNumber) {
+        async function openStarCardModal(star, starNumber) {
             if (!star) return;
-            const dataUrl = generateStarCardDataUrl(star, starNumber);
             const modal = document.getElementById('star-card-modal');
             const img = document.getElementById('star-card-preview');
-            img.src = dataUrl;
+            img.src = ''; // clear any previous preview while this one generates
             modal.classList.add('visible');
+
+            const dataUrl = await generateStarCardDataUrl(star, starNumber);
+            img.src = dataUrl;
 
             document.getElementById('star-card-download').onclick = () => {
                 const a = document.createElement('a');
@@ -2612,7 +2653,7 @@ After that, click the payment button, and after the payment is completed, you wi
 
 We respect and understand your anonymity, so please be sure to save the link to your star or write down the number of the star you purchased somewhere convenient. You can also share this link on social media or instant messaging apps, where you can always find this information for reference.
 
-If necessary, you can always contact us on Twitter: @DigiStarSpace.`,
+If necessary, you can always contact us on Twitter: @DOGEStarSpace.`,
                 html: `Becoming the owner of a star is very simple. If you click the "BUY A STAR" button, a window will appear offering the opportunity to purchase a star. Clicking on the "BUY A STAR" button allows you to purchase a star by its serial number from those available for sale. If you want to purchase a star with a specific serial number, enter that number in the "SEARCH" box, and you'll be able to purchase the star with that serial number.
 
 Stars are divided into three types, each based on their visibility when searching in galactic space. However, the operating principle, search, and display are the same for all stars.
@@ -2627,7 +2668,7 @@ After that, click the payment button, and after the payment is completed, you wi
 
 We respect and understand your anonymity, so please be sure to save the link to your star or write down the number of the star you purchased somewhere convenient. You can also share this link on social media or instant messaging apps, where you can always find this information for reference.
 
-If necessary, you can always contact us on Twitter: <a href="https://x.com/DigiStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DigiStarSpace</a>.`
+If necessary, you can always contact us on Twitter: <a href="https://x.com/DOGEStarSpace" target="_blank" rel="noopener" style="color:#ffd700; text-decoration:none;">https://x.com/DOGEStarSpace</a>.`
             },
             tos: {
                 label: '✦ Terms of Service',
