@@ -1545,7 +1545,7 @@
                 try {
                     const { data, error } = await db
                         .from('purchased_stars')
-                        .select('star_number, user_name, tier, message')
+                        .select('star_number, user_name, tier, message, image_url, image_status')
                         .gte('star_number', rangeMin)
                         .lte('star_number', rangeMax);
                     if (!error && data) {
@@ -1651,6 +1651,20 @@
                         const uName = (row && row.user_name) || tStar.user_name || 'Anonymous Buyer';
                         const uMsg  = (row && row.message)   || tStar.message   || '';
                         const uTier = (row && row.tier)      || tStar.tier      || 'basic';
+                        const uImageUrl    = (row && row.image_url)    || tStar.image_url    || null;
+                        const uImageStatus = (row && row.image_status) || tStar.image_status || 'pending';
+
+                        // Persist the merged data back onto the canonical stars[] entry —
+                        // this is what openStarCardModal reads when the share button is
+                        // clicked later, so it must be complete even for stars that weren't
+                        // part of the initial bulk load.
+                        tStar.isBought    = true;
+                        tStar.user_name   = uName;
+                        tStar.message     = uMsg;
+                        tStar.tier        = uTier;
+                        tStar.image_url   = uImageUrl;
+                        tStar.image_status = uImageStatus;
+
                         let label = uTier === 'supernova' ? '⚡ Supernova Core'
                                   : uTier === 'constellation' ? '🌌 Constellation'
                                   : '⭐ Basic Star';
@@ -1658,8 +1672,10 @@
                             <div class="tooltip-type" style="color:#ffd700; font-weight:bold;">📍 STAR #${targetId}</div>
                             <div class="tooltip-type" style="margin-top:5px;">${label}</div>
                             <div class="tooltip-title">${escapeHtml(uName)}</div>
+                            ${starPhotoHtml(tStar)}
                             <div style="font-style:italic; opacity:0.9; margin: 4px 0;">"${linkifyMessage(uMsg)}"</div>
                             <div style="font-size:11px; color:#ffd700; margin: 4px 0;">Coords: X:${Math.round(tStar.x)} Y:${Math.round(tStar.y)} Z:${Math.round(tStar.z)}</div>
+                            ${shareCardButtonHtml(targetId)}
                         `;
                         tooltip.className = uTier;
                     } else {
