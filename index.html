@@ -1343,21 +1343,60 @@
             return drawBasicDefaultArt(ctx, cx, cy, color);
         }
 
-        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+        // Wraps text to fit maxWidth, breaking on spaces first — and, if a single
+        // "word" (e.g. a URL or an unbroken run of characters with no spaces) is
+        // still wider than maxWidth on its own, breaking it at the character level
+        // too. Without this, one long unbroken token would draw past the edges of
+        // the canvas — this is what caused text to look "cut off"/off-center before.
+        function getWrappedLines(ctx, text, maxWidth) {
             const words = text.split(' ');
-            let line = '';
             const lines = [];
+            let line = '';
+
+            function pushLongWord(word) {
+                // Break a single overlong word into character-level chunks that fit.
+                let chunk = '';
+                for (const ch of word) {
+                    const testChunk = chunk + ch;
+                    if (ctx.measureText(testChunk).width > maxWidth && chunk.length > 0) {
+                        lines.push(chunk);
+                        chunk = ch;
+                    } else {
+                        chunk = testChunk;
+                    }
+                }
+                return chunk;
+            }
+
             for (let n = 0; n < words.length; n++) {
-                const testLine = line + words[n] + ' ';
-                if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+                let word = words[n];
+
+                // If the word alone is wider than maxWidth, it needs char-level breaking.
+                if (ctx.measureText(word).width > maxWidth) {
+                    if (line.trim()) { lines.push(line.trim()); line = ''; }
+                    word = pushLongWord(word); // returns the trailing leftover chunk
+                }
+
+                const testLine = line + word + ' ';
+                if (ctx.measureText(testLine).width > maxWidth && line.trim()) {
                     lines.push(line.trim());
-                    line = words[n] + ' ';
+                    line = word + ' ';
                 } else {
                     line = testLine;
                 }
             }
-            lines.push(line.trim());
+            if (line.trim()) lines.push(line.trim());
+            return lines;
+        }
+
+        function drawWrappedLines(ctx, lines, x, y, lineHeight) {
             lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
+        }
+
+        // Kept for compatibility — wraps and draws in one call.
+        function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
+            const lines = getWrappedLines(ctx, text, maxWidth);
+            drawWrappedLines(ctx, lines, x, y, lineHeight);
             return lines.length;
         }
 
@@ -1429,18 +1468,44 @@
                         drawTierDefaultArt(ctx, star.tier, W / 2, 620, color);
                     }
 
+                    // Message — dynamically sized so it always fits, however long it is.
+                    // maxWidth is generous (small side margins) per design; if the message
+                    // is still long enough to risk overflowing before the footer, the font
+                    // shrinks in steps rather than letting any line run off the canvas.
                     const msgY = hasPhoto ? photoBottomY + 70 : 1090;
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'italic 400 36px sans-serif';
-                    const msg = `"${(star.message || '').slice(0, 180)}"`;
-                    const lineCount = wrapCanvasText(ctx, msg, W / 2, msgY, 860, 48);
+                    const msgMaxWidth = W - 140; // ~70px margin either side
+                    const footerReserve = 1740;   // y of the footer separator line
+                    const bottomBudget = footerReserve - msgY - 100; // room for message + named-by + coords
 
-                    const namedByY = msgY + lineCount * 48 + 40;
-                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                    const msg = `"${(star.message || '').slice(0, 300)}"`;
+                    let msgFontSize = 36;
+                    let msgLines, msgLineHeight;
+                    while (true) {
+                        ctx.font = `italic 400 ${msgFontSize}px sans-serif`;
+                        msgLineHeight = Math.round(msgFontSize * 1.35);
+                        msgLines = getWrappedLines(ctx, msg, msgMaxWidth);
+                        if (msgLines.length * msgLineHeight <= bottomBudget || msgFontSize <= 22) break;
+                        msgFontSize -= 2;
+                    }
+                    // Absolute safety net: even at minimum size, cap total lines so we
+                    // never draw past the footer, truncating with an ellipsis if needed.
+                    const maxLines = Math.max(1, Math.floor(bottomBudget / msgLineHeight));
+                    if (msgLines.length > maxLines) {
+                        msgLines = msgLines.slice(0, maxLines);
+                        msgLines[maxLines - 1] = msgLines[maxLines - 1].replace(/["\s]*$/, '') + '…"';
+                    }
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = `italic 400 ${msgFontSize}px sans-serif`;
+                    drawWrappedLines(ctx, msgLines, W / 2, msgY, msgLineHeight);
+                    const lineCount = msgLines.length;
+
+                    const namedByY = msgY + lineCount * msgLineHeight + 40;
+                    ctx.fillStyle = 'rgba(255,255,255,0.85)';
                     ctx.font = '400 26px sans-serif';
                     ctx.fillText(`— Named by ${(star.user_name || 'Anonymous').slice(0, 40)}`, W / 2, namedByY);
 
-                    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                    ctx.fillStyle = 'rgba(255,215,0,0.6)';
                     ctx.font = '400 20px monospace';
                     ctx.fillText(`X:${Math.round(star.x)}  Y:${Math.round(star.y)}  Z:${Math.round(star.z)}`, W / 2, namedByY + 42);
 
@@ -1454,7 +1519,7 @@
                     ctx.font = '700 42px sans-serif';
                     ctx.fillText('⭐ galaxyspace.xyz', W / 2, 1800);
 
-                    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+                    ctx.fillStyle = 'rgba(255,255,255,0.75)';
                     ctx.font = '400 24px sans-serif';
                     ctx.fillText('Name a star for someone you love', W / 2, 1842);
                 }
